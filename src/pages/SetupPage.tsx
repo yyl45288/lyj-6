@@ -1,9 +1,11 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Swords, Shield, Sparkles } from 'lucide-react';
+import { Swords, Shield, Sparkles, History, Play, Trash2 } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
-import { CharacterId, Team, ActiveSynergy, Profession } from '@/types';
+import { CharacterId, Team, ActiveSynergy, Profession, BattleRecording } from '@/types';
 import { CHARACTER_TEMPLATES, ALL_CHARACTERS, PROFESSION_NAMES, PROFESSION_EMOJI, SYNERGY_DATA } from '@/data/units';
 import { calculateSynergies, getSynergyEmoji } from '@/engine/synergy';
+import { MAX_BATTLE_RECORDINGS } from '@/engine/battleStorage';
 import UnitCard from '@/components/UnitCard';
 import FormationSlot from '@/components/FormationSlot';
 
@@ -62,14 +64,101 @@ export default function SetupPage() {
   const addToFormation = useGameStore((s) => s.addToFormation);
   const removeFromFormation = useGameStore((s) => s.removeFromFormation);
   const startBattle = useGameStore((s) => s.startBattle);
+  const savedRecordings = useGameStore((s) => s.savedRecordings);
+  const loadRecordings = useGameStore((s) => s.loadRecordings);
+  const startReplay = useGameStore((s) => s.startReplay);
+  const deleteRecordingAction = useGameStore((s) => s.deleteRecording);
+  const clearAllRecordingsAction = useGameStore((s) => s.clearAllRecordings);
 
   const blueSynergies = calculateSynergies(blueFormation);
   const redSynergies = calculateSynergies(redFormation);
+
+  useEffect(() => {
+    loadRecordings();
+  }, [loadRecordings]);
 
   const handleStart = () => {
     if (blueFormation.length === 0 || redFormation.length === 0) return;
     startBattle();
     navigate('/battle');
+  };
+
+  const handleStartReplay = (recordingId: string) => {
+    const success = startReplay(recordingId);
+    if (success) {
+      navigate('/battle');
+    }
+  };
+
+  const handleDeleteRecording = (e: React.MouseEvent, recordingId: string) => {
+    e.stopPropagation();
+    deleteRecordingAction(recordingId);
+  };
+
+  const handleClearAll = () => {
+    if (window.confirm('确定要删除所有战斗记录吗？')) {
+      clearAllRecordingsAction();
+    }
+  };
+
+  const formatDate = (timestamp: number): string => {
+    const date = new Date(timestamp);
+    return date.toLocaleString('zh-CN', {
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  };
+
+  const renderRecordingItem = (recording: BattleRecording) => {
+    const duration = Math.round((recording.endTime - recording.startTime) / 1000);
+    return (
+      <div
+        key={recording.id}
+        onClick={() => handleStartReplay(recording.id)}
+        className="p-3 rounded-lg border bg-[#2a2a4a]/50 border-[#2a2a4a] hover:bg-[#3a3a5a]/50 hover:border-[#3a3a5a] transition-all cursor-pointer group"
+      >
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <span
+              className="px-2 py-0.5 rounded text-[10px] font-bold"
+              style={{
+                backgroundColor: recording.winner === 'blue' ? '#4ea8de33' : '#e9456033',
+                color: recording.winner === 'blue' ? '#4ea8de' : '#e94560',
+              }}
+            >
+              {recording.winner === 'blue' ? '蓝方胜' : recording.winner === 'red' ? '红方胜' : '进行中'}
+            </span>
+            <span className="text-xs text-gray-400">{recording.totalTurns}回合</span>
+            <span className="text-[10px] text-gray-600">{duration}秒</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-[#f0c040]/20 text-[#f0c040] transition-all"
+              title="回放"
+            >
+              <Play size={14} />
+            </button>
+            <button
+              onClick={(e) => handleDeleteRecording(e, recording.id)}
+              className="opacity-0 group-hover:opacity-100 p-1.5 rounded hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-all"
+              title="删除"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        </div>
+        <div className="text-xs text-gray-500 mb-1.5">{formatDate(recording.startTime)}</div>
+        <div className="flex items-center gap-2 text-[10px] text-gray-500">
+          <span className="text-[#4ea8de]">蓝: {recording.blueFormation.length}</span>
+          <span>vs</span>
+          <span className="text-[#e94560]">红: {recording.redFormation.length}</span>
+          <span className="ml-auto">{recording.snapshots.length}个快照</span>
+        </div>
+      </div>
+    );
   };
 
   const renderTeamPanel = (team: Team) => {
@@ -160,7 +249,7 @@ export default function SetupPage() {
         {renderTeamPanel('red')}
       </div>
 
-      <div className="flex justify-center">
+      <div className="flex justify-center mb-6">
         <button
           onClick={handleStart}
           disabled={blueFormation.length === 0 || redFormation.length === 0}
@@ -174,6 +263,38 @@ export default function SetupPage() {
         >
           开始战斗
         </button>
+      </div>
+
+      <div className="max-w-7xl mx-auto mb-6 p-4 rounded-lg bg-[#0a0a1a]/50 border border-[#2a2a4a]">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <History size={16} className="text-[#f0c040]" />
+            <span className="text-sm font-bold text-[#f0c040]">
+              历史战斗 ({savedRecordings.length}/{MAX_BATTLE_RECORDINGS})
+            </span>
+          </div>
+          {savedRecordings.length > 0 && (
+            <button
+              onClick={handleClearAll}
+              className="text-[10px] text-gray-500 hover:text-red-400 transition-colors flex items-center gap-1"
+            >
+              <Trash2 size={12} />
+              清空全部
+            </button>
+          )}
+        </div>
+
+        {savedRecordings.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-gray-500 text-xs">
+            <History size={32} className="mb-2 opacity-30" />
+            <div>暂无战斗记录</div>
+            <div className="text-[10px] mt-1">完成战斗后将自动保存到这里</div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {savedRecordings.map(renderRecordingItem)}
+          </div>
+        )}
       </div>
 
       <div className="max-w-7xl mx-auto mt-6 p-4 rounded-lg bg-[#0a0a1a]/50 border border-[#2a2a4a]">

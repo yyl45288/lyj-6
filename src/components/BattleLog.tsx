@@ -57,6 +57,12 @@ export default function BattleLog({ logs }: BattleLogProps) {
   }, [loadRecordings]);
 
   useEffect(() => {
+    if (activeTab === 'replay') {
+      loadRecordings();
+    }
+  }, [activeTab, loadRecordings]);
+
+  useEffect(() => {
     if (activeTab === 'log') {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }

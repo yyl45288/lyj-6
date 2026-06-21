@@ -24,6 +24,8 @@ export default function BattlePage() {
   const recordBattleSnapshot = useGameStore((s) => s.recordBattleSnapshot);
   const finishBattleRecording = useGameStore((s) => s.finishBattleRecording);
   const stopReplay = useGameStore((s) => s.stopReplay);
+  const startReplay = useGameStore((s) => s.startReplay);
+  const lastSavedRecordingId = useGameStore((s) => s.lastSavedRecordingId);
   const replayNext = useGameStore((s) => s.replayNext);
   const setReplayPlaying = useGameStore((s) => s.setReplayPlaying);
   const setReplaySpeed = useGameStore((s) => s.setReplaySpeed);
@@ -31,6 +33,7 @@ export default function BattlePage() {
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const localStateRef = useRef<BattleState | null>(null);
+  const finishedRecordingIdRef = useRef<string | null>(null);
 
   const advanceTurn = useCallback(() => {
     if (!localStateRef.current) return;
@@ -47,7 +50,8 @@ export default function BattlePage() {
     useGameStore.setState({ battleState: cloned });
 
     if (cloned.phase === 'finished') {
-      finishBattleRecording(cloned);
+      const recordingId = finishBattleRecording(cloned);
+      finishedRecordingIdRef.current = recordingId;
     }
   }, [recordBattleSnapshot, finishBattleRecording]);
 
@@ -143,6 +147,7 @@ export default function BattlePage() {
       intervalRef.current = null;
     }
     localStateRef.current = null;
+    finishedRecordingIdRef.current = null;
 
     if (replayState.isReplayMode) {
       stopReplay();
@@ -151,6 +156,22 @@ export default function BattlePage() {
     }
     navigate('/');
   }, [replayState.isReplayMode, stopReplay, resetBattle, navigate]);
+
+  const handleViewReplay = useCallback(() => {
+    const recordingId = finishedRecordingIdRef.current || lastSavedRecordingId;
+    if (!recordingId) return;
+
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    localStateRef.current = null;
+
+    const success = startReplay(recordingId);
+    if (success) {
+      setReplayPlaying(false);
+    }
+  }, [lastSavedRecordingId, startReplay, setReplayPlaying]);
 
   const handleUnitClick = useCallback(
     (unitId: string) => {
@@ -226,13 +247,26 @@ export default function BattlePage() {
               {battleState.winner === 'blue' ? '蓝方' : '红方'}胜利
             </div>
             <div className="text-gray-400 text-sm">第 {battleState.turn} 回合结束</div>
-            <button
-              onClick={handleReset}
-              className="px-8 py-2.5 rounded-lg font-bold text-sm transition-all hover:scale-105"
-              style={{ backgroundColor: '#f0c040', color: '#1a1a2e' }}
-            >
-              返回配置
-            </button>
+            <div className="flex gap-3 mt-2">
+              <button
+                onClick={handleViewReplay}
+                className="px-6 py-2.5 rounded-lg font-bold text-sm transition-all hover:scale-105 border"
+                style={{
+                  backgroundColor: '#2a2a4a',
+                  color: '#f0c040',
+                  borderColor: '#f0c040',
+                }}
+              >
+                查看回放
+              </button>
+              <button
+                onClick={handleReset}
+                className="px-8 py-2.5 rounded-lg font-bold text-sm transition-all hover:scale-105"
+                style={{ backgroundColor: '#f0c040', color: '#1a1a2e' }}
+              >
+                返回配置
+              </button>
+            </div>
           </div>
         </div>
       )}

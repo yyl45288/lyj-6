@@ -14,6 +14,7 @@ interface GameStore {
   battleReplay: BattleReplay | null;
   replayState: BattleReplayState;
   savedRecordings: BattleRecording[];
+  lastSavedRecordingId: string | null;
   addToFormation: (team: Team, characterId: CharacterId) => void;
   removeFromFormation: (team: Team, index: number) => void;
   startBattle: () => void;
@@ -24,7 +25,7 @@ interface GameStore {
   getBlueSynergies: () => ActiveSynergy[];
   getRedSynergies: () => ActiveSynergy[];
   recordBattleSnapshot: (state: BattleState) => void;
-  finishBattleRecording: (state: BattleState) => void;
+  finishBattleRecording: (state: BattleState) => string | null;
   loadRecordings: () => void;
   startReplay: (recordingId: string) => boolean;
   stopReplay: () => void;
@@ -38,6 +39,7 @@ interface GameStore {
   replayGoToTurn: (turn: number) => void;
   deleteRecording: (recordingId: string) => void;
   clearAllRecordings: () => void;
+  setLastSavedRecordingId: (id: string | null) => void;
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -54,6 +56,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     playSpeed: 1,
   },
   savedRecordings: [],
+  lastSavedRecordingId: null,
 
   addToFormation: (team, characterId) =>
     set((state) => {
@@ -126,9 +129,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (recorder && recorder.isActive()) {
       const recording = recorder.finish(state);
       if (recording) {
+        set({ lastSavedRecordingId: recording.id });
         get().loadRecordings();
+        return recording.id;
       }
     }
+    return null;
   },
 
   loadRecordings: () => {
@@ -308,5 +314,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   clearAllRecordings: () => {
     clearAllRecordings();
     set({ savedRecordings: [] });
+  },
+
+  setLastSavedRecordingId: (id) => {
+    set({ lastSavedRecordingId: id });
   },
 }));
