@@ -1,13 +1,15 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Swords, Shield, Sparkles, History, Play, Trash2 } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
-import { CharacterId, Team, ActiveSynergy, Profession, BattleRecording } from '@/types';
+import { CharacterId, Team, ActiveSynergy, Profession, BattleRecording, EquipmentSlot, Equipment } from '@/types';
 import { CHARACTER_TEMPLATES, ALL_CHARACTERS, PROFESSION_NAMES, PROFESSION_EMOJI, SYNERGY_DATA } from '@/data/units';
 import { calculateSynergies, getSynergyEmoji } from '@/engine/synergy';
 import { MAX_BATTLE_RECORDINGS } from '@/engine/battleStorage';
 import UnitCard from '@/components/UnitCard';
 import FormationSlot from '@/components/FormationSlot';
+import EquipmentSlots from '@/components/EquipmentSlots';
+import EquipmentSelector from '@/components/EquipmentSelector';
 
 function SynergyPanel({ synergies, team }: { synergies: ActiveSynergy[]; team: Team }) {
   const teamColor = team === 'blue' ? '#4ea8de' : '#e94560';
@@ -61,8 +63,13 @@ export default function SetupPage() {
   const navigate = useNavigate();
   const blueFormation = useGameStore((s) => s.blueFormation);
   const redFormation = useGameStore((s) => s.redFormation);
+  const blueEquipment = useGameStore((s) => s.blueEquipment);
+  const redEquipment = useGameStore((s) => s.redEquipment);
   const addToFormation = useGameStore((s) => s.addToFormation);
   const removeFromFormation = useGameStore((s) => s.removeFromFormation);
+  const equipItem = useGameStore((s) => s.equipItem);
+  const unequipItem = useGameStore((s) => s.unequipItem);
+  const getUnitEquipment = useGameStore((s) => s.getUnitEquipment);
   const startBattle = useGameStore((s) => s.startBattle);
   const savedRecordings = useGameStore((s) => s.savedRecordings);
   const loadRecordings = useGameStore((s) => s.loadRecordings);
@@ -70,12 +77,42 @@ export default function SetupPage() {
   const deleteRecordingAction = useGameStore((s) => s.deleteRecording);
   const clearAllRecordingsAction = useGameStore((s) => s.clearAllRecordings);
 
+  const [selectedUnitForEquipment, setSelectedUnitForEquipment] = useState<{ team: Team; index: number } | null>(null);
+  const [equipmentSelectorOpen, setEquipmentSelectorOpen] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot | null>(null);
+
   const blueSynergies = calculateSynergies(blueFormation);
   const redSynergies = calculateSynergies(redFormation);
 
   useEffect(() => {
     loadRecordings();
   }, [loadRecordings]);
+
+  const handleSlotClick = (team: Team, index: number) => {
+    const formation = team === 'blue' ? blueFormation : redFormation;
+    if (formation[index]) {
+      setSelectedUnitForEquipment({ team, index });
+    }
+  };
+
+  const handleEquipmentSlotClick = (slot: EquipmentSlot) => {
+    if (selectedUnitForEquipment) {
+      setSelectedSlot(slot);
+      setEquipmentSelectorOpen(true);
+    }
+  };
+
+  const handleEquip = (equipment: Equipment) => {
+    if (selectedUnitForEquipment && selectedSlot) {
+      equipItem(selectedUnitForEquipment.team, selectedUnitForEquipment.index, equipment);
+    }
+  };
+
+  const handleUnequip = () => {
+    if (selectedUnitForEquipment && selectedSlot) {
+      unequipItem(selectedUnitForEquipment.team, selectedUnitForEquipment.index, selectedSlot);
+    }
+  };
 
   const handleStart = () => {
     if (blueFormation.length === 0 || redFormation.length === 0) return;
@@ -163,6 +200,7 @@ export default function SetupPage() {
 
   const renderTeamPanel = (team: Team) => {
     const formation = team === 'blue' ? blueFormation : redFormation;
+    const equipment = team === 'blue' ? blueEquipment : redEquipment;
     const synergies = team === 'blue' ? blueSynergies : redSynergies;
     const teamColor = team === 'blue' ? '#4ea8de' : '#e94560';
     const label = team === 'blue' ? '蓝方' : '红方';
@@ -177,6 +215,15 @@ export default function SetupPage() {
         professionCounts[t.profession] = (professionCounts[t.profession] || 0) + 1;
       }
     });
+
+    const handleEquipSlotClick = (index: number, slot: EquipmentSlot, e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (formation[index]) {
+        setSelectedUnitForEquipment({ team, index });
+        setSelectedSlot(slot);
+        setEquipmentSelectorOpen(true);
+      }
+    };
 
     return (
       <div className="flex-1 min-w-0">
@@ -207,16 +254,47 @@ export default function SetupPage() {
           </div>
         </div>
 
+        <div className="text-xs text-gray-500 mb-2">阵容与装备（点击装备图标编辑）</div>
         <div className="grid grid-cols-4 gap-2 mb-4">
           {slots.map((characterId, i) => (
-            <FormationSlot
-              key={i}
-              characterId={characterId}
-              team={team}
-              index={i}
-              synergies={synergies}
-              onRemove={() => removeFromFormation(team, i)}
-            />
+            <div key={i} className="space-y-1">
+              <FormationSlot
+                characterId={characterId}
+                team={team}
+                index={i}
+                synergies={synergies}
+                onRemove={() => removeFromFormation(team, i)}
+              />
+              {characterId && (
+                <div className="flex gap-1 justify-center">
+                  {(['weapon', 'armor', 'accessory'] as EquipmentSlot[]).map((slot) => {
+                    const unitEquip = equipment[i];
+                    const item = unitEquip?.[slot];
+                    return (
+                      <div
+                        key={slot}
+                        className="w-6 h-6 rounded flex items-center justify-center text-xs border cursor-pointer transition-all hover:scale-110"
+                        style={{
+                          backgroundColor: item ? '#1a1a2e' : '#0a0a1a',
+                          borderColor: item ? '#f0c04066' : '#2a2a4a',
+                          borderStyle: item ? 'solid' : 'dashed',
+                        }}
+                        onClick={(e) => handleEquipSlotClick(i, slot, e)}
+                        title={item ? item.name : `装备${slot === 'weapon' ? '武器' : slot === 'armor' ? '防具' : '饰品'}`}
+                      >
+                        {item ? (
+                          <span className="text-[10px]">
+                            {slot === 'weapon' ? '⚔️' : slot === 'armor' ? '🛡️' : '💍'}
+                          </span>
+                        ) : (
+                          <span className="text-gray-600 text-[10px]">+</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           ))}
         </div>
 
@@ -327,6 +405,30 @@ export default function SetupPage() {
           ))}
         </div>
       </div>
+
+      {selectedUnitForEquipment && selectedSlot && (
+        <EquipmentSelector
+          isOpen={equipmentSelectorOpen}
+          onClose={() => setEquipmentSelectorOpen(false)}
+          slot={selectedSlot}
+          profession={
+            CHARACTER_TEMPLATES[
+              (selectedUnitForEquipment.team === 'blue'
+                ? blueFormation
+                : redFormation
+              )[selectedUnitForEquipment.index]
+            ]?.profession || 'warrior'
+          }
+          currentEquipment={
+            (selectedUnitForEquipment.team === 'blue'
+              ? blueEquipment
+              : redEquipment
+            )[selectedUnitForEquipment.index]?.[selectedSlot] || null
+          }
+          onEquip={handleEquip}
+          onUnequip={handleUnequip}
+        />
+      )}
 
       <style>{`
         @keyframes pulse {

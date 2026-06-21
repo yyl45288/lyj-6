@@ -70,6 +70,7 @@ export type Unit = {
   isAlive: boolean;
   critRate: number;
   critDmg: number;
+  equipment: UnitEquipment;
 };
 
 export type GameMap = {
@@ -183,6 +184,48 @@ export type BattleRecording = {
   totalTurns: number;
   snapshots: BattleSnapshot[];
 };
+
+export type EquipmentSlot = 'weapon' | 'armor' | 'accessory';
+
+export type EquipmentRarity = 'common' | 'rare' | 'epic' | 'legendary';
+
+export type EquipmentStatBonus = {
+  maxHp?: number;
+  maxMp?: number;
+  atk?: number;
+  def?: number;
+  speed?: number;
+  critRate?: number;
+  critDmg?: number;
+  moveRange?: number;
+  attackRange?: number;
+};
+
+export type EquipmentBuffEffect = {
+  name: string;
+  type: BuffType;
+  value: number;
+  stackable: boolean;
+};
+
+export type Equipment = {
+  id: string;
+  name: string;
+  slot: EquipmentSlot;
+  rarity: EquipmentRarity;
+  description: string;
+  statBonuses: EquipmentStatBonus;
+  buffEffects?: EquipmentBuffEffect[];
+  allowedProfessions?: Profession[];
+};
+
+export type UnitEquipment = {
+  weapon: Equipment | null;
+  armor: Equipment | null;
+  accessory: Equipment | null;
+};
+
+export type FormationEquipment = Record<number, UnitEquipment>;
 
 export type BattleReplayState = {
   isReplayMode: boolean;

@@ -1,0 +1,353 @@
+import { Equipment, EquipmentRarity, Profession } from '../types';
+
+export const RARITY_NAMES: Record<EquipmentRarity, string> = {
+  common: '普通',
+  rare: '稀有',
+  epic: '史诗',
+  legendary: '传说',
+};
+
+export const RARITY_COLORS: Record<EquipmentRarity, string> = {
+  common: '#9ca3af',
+  rare: '#3b82f6',
+  epic: '#a855f7',
+  legendary: '#f59e0b',
+};
+
+export const SLOT_NAMES: Record<string, string> = {
+  weapon: '武器',
+  armor: '防具',
+  accessory: '饰品',
+};
+
+export const SLOT_EMOJIS: Record<string, string> = {
+  weapon: '⚔️',
+  armor: '🛡️',
+  accessory: '💍',
+};
+
+export const ALL_EQUIPMENTS: Equipment[] = [
+  {
+    id: 'iron_sword',
+    name: '铁剑',
+    slot: 'weapon',
+    rarity: 'common',
+    description: '一把普通的铁剑，锋利度一般。',
+    statBonuses: { atk: 5 },
+  },
+  {
+    id: 'steel_sword',
+    name: '钢剑',
+    slot: 'weapon',
+    rarity: 'rare',
+    description: '精钢打造的利剑，攻击力不俗。',
+    statBonuses: { atk: 10, critRate: 0.05 },
+  },
+  {
+    id: 'dragonslayer',
+    name: '屠龙刀',
+    slot: 'weapon',
+    rarity: 'epic',
+    description: '传说中用于屠龙的神兵，威力巨大。',
+    statBonuses: { atk: 18, critRate: 0.1, critDmg: 0.2 },
+    allowedProfessions: ['warrior', 'knight', 'assassin'],
+  },
+  {
+    id: 'fangtian_halberd',
+    name: '方天画戟',
+    slot: 'weapon',
+    rarity: 'legendary',
+    description: '吕布的神兵，天下无双。',
+    statBonuses: { atk: 25, critRate: 0.15, critDmg: 0.3 },
+    allowedProfessions: ['warrior', 'assassin'],
+    buffEffects: [
+      { name: '战魂', type: 'atkUp', value: 8, stackable: false },
+    ],
+  },
+  {
+    id: 'long_bow',
+    name: '长弓',
+    slot: 'weapon',
+    rarity: 'common',
+    description: '射程远的长弓。',
+    statBonuses: { atk: 4, attackRange: 1 },
+    allowedProfessions: ['archer'],
+  },
+  {
+    id: 'compound_bow',
+    name: '复合弓',
+    slot: 'weapon',
+    rarity: 'rare',
+    description: '工艺精湛的复合弓。',
+    statBonuses: { atk: 8, attackRange: 1, critRate: 0.08 },
+    allowedProfessions: ['archer'],
+  },
+  {
+    id: 'sun_bow',
+    name: '落日弓',
+    slot: 'weapon',
+    rarity: 'epic',
+    description: '传说中能射落太阳的神弓。',
+    statBonuses: { atk: 15, attackRange: 2, critRate: 0.15 },
+    allowedProfessions: ['archer'],
+  },
+  {
+    id: 'magic_staff',
+    name: '法杖',
+    slot: 'weapon',
+    rarity: 'common',
+    description: '蕴含魔力的法杖。',
+    statBonuses: { atk: 6, maxMp: 15 },
+    allowedProfessions: ['mage', 'priest', 'warlock'],
+  },
+  {
+    id: 'arcane_staff',
+    name: '奥术法杖',
+    slot: 'weapon',
+    rarity: 'rare',
+    description: '蕴含强大奥术能量的法杖。',
+    statBonuses: { atk: 12, maxMp: 30, critRate: 0.08 },
+    allowedProfessions: ['mage', 'warlock'],
+  },
+  {
+    id: 'holy_staff',
+    name: '圣光杖',
+    slot: 'weapon',
+    rarity: 'epic',
+    description: '散发着神圣光芒的法杖。',
+    statBonuses: { atk: 10, maxMp: 40, critRate: 0.1 },
+    allowedProfessions: ['priest'],
+    buffEffects: [
+      { name: '神圣祝福', type: 'hot', value: 5, stackable: false },
+    ],
+  },
+  {
+    id: 'dragon_staff',
+    name: '龙魂杖',
+    slot: 'weapon',
+    rarity: 'legendary',
+    description: '封印着龙魂的传奇法杖。',
+    statBonuses: { atk: 20, maxMp: 50, critRate: 0.15, critDmg: 0.25 },
+    allowedProfessions: ['mage'],
+    buffEffects: [
+      { name: '龙魂之力', type: 'atkUp', value: 10, stackable: false },
+    ],
+  },
+  {
+    id: 'dagger',
+    name: '匕首',
+    slot: 'weapon',
+    rarity: 'common',
+    description: '锋利的短匕首。',
+    statBonuses: { atk: 4, speed: 1 },
+    allowedProfessions: ['assassin'],
+  },
+  {
+    id: 'shadow_blade',
+    name: '暗影之刃',
+    slot: 'weapon',
+    rarity: 'epic',
+    description: '融入暗影的神秘利刃。',
+    statBonuses: { atk: 15, speed: 2, critRate: 0.12 },
+    allowedProfessions: ['assassin'],
+    buffEffects: [
+      { name: '暗影加速', type: 'atkUp', value: 5, stackable: false },
+    ],
+  },
+  {
+    id: 'leather_armor',
+    name: '皮甲',
+    slot: 'armor',
+    rarity: 'common',
+    description: '轻便的皮革护甲。',
+    statBonuses: { def: 4, maxHp: 10 },
+  },
+  {
+    id: 'chain_mail',
+    name: '锁子甲',
+    slot: 'armor',
+    rarity: 'rare',
+    description: '由金属环相扣的护甲。',
+    statBonuses: { def: 8, maxHp: 25 },
+  },
+  {
+    id: 'plate_armor',
+    name: '板甲',
+    slot: 'armor',
+    rarity: 'epic',
+    description: '厚重的金属板甲，防护力极强。',
+    statBonuses: { def: 15, maxHp: 50 },
+    allowedProfessions: ['warrior', 'knight'],
+  },
+  {
+    id: 'sage_robe',
+    name: '贤者长袍',
+    slot: 'armor',
+    rarity: 'rare',
+    description: '增强魔力的长袍。',
+    statBonuses: { def: 5, maxMp: 25, maxHp: 15 },
+    allowedProfessions: ['mage', 'priest', 'warlock'],
+  },
+  {
+    id: 'assassin_cloak',
+    name: '刺客斗篷',
+    slot: 'armor',
+    rarity: 'rare',
+    description: '轻便灵活的刺客斗篷。',
+    statBonuses: { def: 4, speed: 2, critRate: 0.05 },
+    allowedProfessions: ['assassin'],
+  },
+  {
+    id: 'ranger_leather',
+    name: '游侠皮甲',
+    slot: 'armor',
+    rarity: 'rare',
+    description: '适合弓箭手的轻便皮甲。',
+    statBonuses: { def: 6, speed: 1, moveRange: 1 },
+    allowedProfessions: ['archer'],
+  },
+  {
+    id: 'knight_shield_armor',
+    name: '骑士重甲',
+    slot: 'armor',
+    rarity: 'epic',
+    description: '骑士的重型铠甲，坚不可摧。',
+    statBonuses: { def: 18, maxHp: 60 },
+    allowedProfessions: ['knight'],
+    buffEffects: [
+      { name: '坚守', type: 'defUp', value: 5, stackable: false },
+    ],
+  },
+  {
+    id: 'dragon_scale_armor',
+    name: '龙鳞甲',
+    slot: 'armor',
+    rarity: 'legendary',
+    description: '用龙鳞打造的传奇铠甲。',
+    statBonuses: { def: 22, maxHp: 80 },
+    buffEffects: [
+      { name: '龙鳞护盾', type: 'shield', value: 20, stackable: false },
+    ],
+  },
+  {
+    id: 'hp_ring',
+    name: '生命戒指',
+    slot: 'accessory',
+    rarity: 'common',
+    description: '增加生命值的戒指。',
+    statBonuses: { maxHp: 20 },
+  },
+  {
+    id: 'atk_ring',
+    name: '力量戒指',
+    slot: 'accessory',
+    rarity: 'common',
+    description: '增加攻击力的戒指。',
+    statBonuses: { atk: 4 },
+  },
+  {
+    id: 'def_ring',
+    name: '守护戒指',
+    slot: 'accessory',
+    rarity: 'common',
+    description: '增加防御力的戒指。',
+    statBonuses: { def: 4 },
+  },
+  {
+    id: 'speed_boots',
+    name: '疾风靴',
+    slot: 'accessory',
+    rarity: 'rare',
+    description: '增加移动速度的靴子。',
+    statBonuses: { speed: 3, moveRange: 1 },
+  },
+  {
+    id: 'crit_amulet',
+    name: '暴击项链',
+    slot: 'accessory',
+    rarity: 'rare',
+    description: '增加暴击率的项链。',
+    statBonuses: { critRate: 0.1, critDmg: 0.15 },
+  },
+  {
+    id: 'mana_pendant',
+    name: '魔力吊坠',
+    slot: 'accessory',
+    rarity: 'rare',
+    description: '增加魔力的吊坠。',
+    statBonuses: { maxMp: 30, atk: 5 },
+  },
+  {
+    id: 'warrior_badge',
+    name: '战士徽章',
+    slot: 'accessory',
+    rarity: 'epic',
+    description: '战士的荣誉徽章。',
+    statBonuses: { atk: 8, maxHp: 30, def: 5 },
+    allowedProfessions: ['warrior'],
+    buffEffects: [
+      { name: '战吼', type: 'atkUp', value: 6, stackable: false },
+    ],
+  },
+  {
+    id: 'holy_symbol',
+    name: '神圣圣徽',
+    slot: 'accessory',
+    rarity: 'epic',
+    description: '蕴含神圣力量的圣徽。',
+    statBonuses: { def: 6, maxHp: 25, maxMp: 20 },
+    allowedProfessions: ['priest'],
+    buffEffects: [
+      { name: '神圣庇护', type: 'hot', value: 8, stackable: false },
+    ],
+  },
+  {
+    id: 'shadow_amulet',
+    name: '暗影护符',
+    slot: 'accessory',
+    rarity: 'epic',
+    description: '蕴含暗影力量的护符。',
+    statBonuses: { atk: 10, critRate: 0.1, speed: 1 },
+    allowedProfessions: ['warlock', 'assassin'],
+    buffEffects: [
+      { name: '暗影侵蚀', type: 'dot', value: 5, stackable: true },
+    ],
+  },
+  {
+    id: 'phoenix_feather',
+    name: '凤凰羽饰',
+    slot: 'accessory',
+    rarity: 'legendary',
+    description: '凤凰的羽毛，蕴含不死之力。',
+    statBonuses: { maxHp: 60, def: 10, speed: 2 },
+    buffEffects: [
+      { name: '凤凰涅槃', type: 'hot', value: 10, stackable: false },
+    ],
+  },
+  {
+    id: 'wisdom_crown',
+    name: '智慧王冠',
+    slot: 'accessory',
+    rarity: 'legendary',
+    description: '赋予佩戴者无穷智慧。',
+    statBonuses: { atk: 15, maxMp: 60, critRate: 0.12 },
+    allowedProfessions: ['mage', 'priest', 'warlock'],
+    buffEffects: [
+      { name: '奥术增幅', type: 'atkUp', value: 8, stackable: false },
+    ],
+  },
+];
+
+export const getEquipmentsBySlot = (slot: string): Equipment[] => {
+  return ALL_EQUIPMENTS.filter((e) => e.slot === slot);
+};
+
+export const getEquipmentsByProfession = (profession: Profession): Equipment[] => {
+  return ALL_EQUIPMENTS.filter((e) => !e.allowedProfessions || e.allowedProfessions.includes(profession));
+};
+
+export const getEquipmentsBySlotAndProfession = (slot: string, profession: Profession): Equipment[] => {
+  return ALL_EQUIPMENTS.filter(
+    (e) => e.slot === slot && (!e.allowedProfessions || e.allowedProfessions.includes(profession))
+  );
+};

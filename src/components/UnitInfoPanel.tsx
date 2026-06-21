@@ -1,6 +1,7 @@
-import { Unit } from '@/types';
+import { Unit, Equipment } from '@/types';
 import { getBuffModifier } from '@/engine/buff';
 import { PROFESSION_EMOJI } from '@/data/units';
+import { RARITY_COLORS, SLOT_EMOJIS, SLOT_NAMES } from '@/data/equipment';
 import { X } from 'lucide-react';
 
 interface UnitInfoPanelProps {
@@ -130,6 +131,36 @@ export default function UnitInfoPanel({ unit, allUnits, onClose }: UnitInfoPanel
                 )}
               </div>
             ))}
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[10px] text-gray-500 mb-1">装备</div>
+          <div className="space-y-1">
+            {(['weapon', 'armor', 'accessory'] as const).map((slot) => {
+              const item = unit.equipment[slot];
+              return (
+                <div
+                  key={slot}
+                  className="flex items-center gap-2 text-[11px] px-2 py-1 rounded bg-[#0a0a1a]"
+                >
+                  <span className="text-sm">{SLOT_EMOJIS[slot]}</span>
+                  <span className="text-gray-500 w-10">
+                    {SLOT_NAMES[slot]}
+                  </span>
+                  {item ? (
+                    <span
+                      className="flex-1 truncate font-medium"
+                      style={{ color: RARITY_COLORS[item.rarity] }}
+                    >
+                      {item.name}
+                    </span>
+                  ) : (
+                    <span className="flex-1 text-gray-600">未装备</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 

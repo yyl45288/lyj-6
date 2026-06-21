@@ -10,6 +10,8 @@ import {
   Unit,
   CharacterId,
   CharacterTemplate,
+  FormationEquipment,
+  UnitEquipment,
 } from '../types';
 import { CHARACTER_TEMPLATES } from '../data/units';
 import { findPath } from './pathfinding';
@@ -23,6 +25,7 @@ import {
 import { applyBuff, getBuffModifier, tickBuffs } from './buff';
 import { generateMap, getSpawnPositions } from './mapGenerator';
 import { calculateSynergies, applySynergyBonuses } from './synergy';
+import { applyEquipmentStats, applyEquipmentBuffs, createEmptyUnitEquipment } from './equipment';
 
 export function createUnit(
   template: CharacterTemplate,
@@ -52,12 +55,15 @@ export function createUnit(
     isAlive: true,
     critRate: template.critRate,
     critDmg: template.critDmg,
+    equipment: { weapon: null, armor: null, accessory: null },
   };
 }
 
 export function initBattle(
   blueFormation: CharacterId[],
-  redFormation: CharacterId[]
+  redFormation: CharacterId[],
+  blueEquipment: FormationEquipment = {},
+  redEquipment: FormationEquipment = {}
 ): BattleState {
   const map = generateMap(12, 8);
 
@@ -74,6 +80,10 @@ export function initBattle(
     if (template && blueSpawns[i]) {
       const unit = createUnit(template, 'blue', blueSpawns[i], `blue_${i}`);
       applySynergyBonuses(unit, blueSynergies);
+      const unitEquip = blueEquipment[i] || createEmptyUnitEquipment();
+      unit.equipment = { ...unitEquip };
+      applyEquipmentStats(unit, unitEquip);
+      applyEquipmentBuffs(unit, unitEquip);
       units.push(unit);
     }
   });
@@ -83,6 +93,10 @@ export function initBattle(
     if (template && redSpawns[i]) {
       const unit = createUnit(template, 'red', redSpawns[i], `red_${i}`);
       applySynergyBonuses(unit, redSynergies);
+      const unitEquip = redEquipment[i] || createEmptyUnitEquipment();
+      unit.equipment = { ...unitEquip };
+      applyEquipmentStats(unit, unitEquip);
+      applyEquipmentBuffs(unit, unitEquip);
       units.push(unit);
     }
   });

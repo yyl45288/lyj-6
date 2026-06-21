@@ -1,14 +1,29 @@
 import { create } from 'zustand';
-import { BattleState, Team, CharacterId, ActiveSynergy, BattleReplayState, BattleRecording } from '@/types';
+import {
+  BattleState,
+  Team,
+  CharacterId,
+  ActiveSynergy,
+  BattleReplayState,
+  BattleRecording,
+  Equipment,
+  UnitEquipment,
+  FormationEquipment,
+  EquipmentSlot,
+} from '@/types';
 import { initBattle } from '@/engine/battle';
 import { calculateSynergies } from '@/engine/synergy';
 import { createBattleRecorder, BattleRecorder } from '@/engine/battleRecorder';
 import { createBattleReplay, BattleReplay, getAllRecordings } from '@/engine/battleReplay';
 import { loadAllRecordings, deleteRecording, clearAllRecordings } from '@/engine/battleStorage';
+import { createEmptyUnitEquipment, canEquip } from '@/engine/equipment';
+import { CHARACTER_TEMPLATES } from '@/data/units';
 
 interface GameStore {
   blueFormation: CharacterId[];
   redFormation: CharacterId[];
+  blueEquipment: FormationEquipment;
+  redEquipment: FormationEquipment;
   battleState: BattleState | null;
   battleRecorder: BattleRecorder | null;
   battleReplay: BattleReplay | null;
@@ -40,11 +55,16 @@ interface GameStore {
   deleteRecording: (recordingId: string) => void;
   clearAllRecordings: () => void;
   setLastSavedRecordingId: (id: string | null) => void;
+  equipItem: (team: Team, formationIndex: number, equipment: Equipment) => boolean;
+  unequipItem: (team: Team, formationIndex: number, slot: EquipmentSlot) => boolean;
+  getUnitEquipment: (team: Team, formationIndex: number) => UnitEquipment;
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
   blueFormation: ['zhaoyun', 'huangzhong', 'zhugeliang', 'huatuo'],
   redFormation: ['caocao', 'lubu', 'zuoci', 'zhangfei'],
+  blueEquipment: {},
+  redEquipment: {},
   battleState: null,
   battleRecorder: null,
   battleReplay: null,
@@ -68,15 +88,35 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   removeFromFormation: (team, index) =>
     set((state) => {
-      const key = team === 'blue' ? 'blueFormation' : 'redFormation';
-      const formation = [...state[key]];
+      const formationKey = team === 'blue' ? 'blueFormation' : 'redFormation';
+      const equipmentKey = team === 'blue' ? 'blueEquipment' : 'redEquipment';
+      const formation = [...state[formationKey]];
       formation.splice(index, 1);
-      return { [key]: formation };
+
+      const currentEquipment = state[equipmentKey];
+      const newEquipment: FormationEquipment = {};
+      const keys = Object.keys(currentEquipment)
+        .map(Number)
+        .sort((a, b) => a - b);
+      let newIdx = 0;
+      for (const oldIdx of keys) {
+        if (oldIdx !== index) {
+          newEquipment[newIdx] = currentEquipment[oldIdx];
+          newIdx++;
+        }
+      }
+
+      return { [formationKey]: formation, [equipmentKey]: newEquipment };
     }),
 
   startBattle: () =>
     set((state) => {
-      const battleState = initBattle(state.blueFormation, state.redFormation);
+      const battleState = initBattle(
+        state.blueFormation,
+        state.redFormation,
+        state.blueEquipment,
+        state.redEquipment
+      );
       const recorder = createBattleRecorder();
       recorder.start(battleState, state.blueFormation, state.redFormation);
       return {
@@ -318,5 +358,71 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   setLastSavedRecordingId: (id) => {
     set({ lastSavedRecordingId: id });
+  },
+
+  equipItem: (team, formationIndex, equipment) => {
+    const state = get();
+    const formationKey = team === 'blue' ? 'blueFormation' : 'redFormation';
+    const equipmentKey = team === 'blue' ? 'blueEquipment' : 'redEquipment';
+    const formation = state[formationKey];
+
+    if (formationIndex < 0 || formationIndex >= formation.length) {
+      return false;
+    }
+
+    const characterId = formation[formationIndex];
+    const template = CHARACTER_TEMPLATES[characterId];
+    if (!template) return false;
+
+    if (!canEquip(equipment, template.profession)) {
+      return false;
+    }
+
+    set((s) => {
+      const currentEquipment = s[equipmentKey];
+      const unitEquip = currentEquipment[formationIndex] || createEmptyUnitEquipment();
+      const newUnitEquip = { ...unitEquip, [equipment.slot]: equipment };
+
+      return {
+        [equipmentKey]: {
+          ...currentEquipment,
+          [formationIndex]: newUnitEquip,
+        },
+      };
+    });
+
+    return true;
+  },
+
+  unequipItem: (team, formationIndex, slot) => {
+    const state = get();
+    const equipmentKey = team === 'blue' ? 'blueEquipment' : 'redEquipment';
+    const currentEquipment = state[equipmentKey];
+    const unitEquip = currentEquipment[formationIndex];
+
+    if (!unitEquip || !unitEquip[slot]) {
+      return false;
+    }
+
+    set((s) => {
+      const unitEquip = s[equipmentKey][formationIndex] || createEmptyUnitEquipment();
+      const newUnitEquip = { ...unitEquip, [slot]: null };
+
+      return {
+        [equipmentKey]: {
+          ...s[equipmentKey],
+          [formationIndex]: newUnitEquip,
+        },
+      };
+    });
+
+    return true;
+  },
+
+  getUnitEquipment: (team, formationIndex) => {
+    const state = get();
+    const equipmentKey = team === 'blue' ? 'blueEquipment' : 'redEquipment';
+    const equipment = state[equipmentKey];
+    return equipment[formationIndex] || createEmptyUnitEquipment();
   },
 }));
