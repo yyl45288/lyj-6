@@ -1,16 +1,7 @@
 import { useRef, useEffect, useCallback } from 'react';
-import { BattleState, UnitClass, Unit } from '@/types';
+import { BattleState, Unit } from '@/types';
 import { getAggroTarget } from '@/engine/aggro';
-
-const CLASS_EMOJI: Record<UnitClass, string> = {
-  warrior: '⚔️',
-  knight: '🛡️',
-  archer: '🏹',
-  mage: '🔮',
-  assassin: '🗡️',
-  priest: '✨',
-  warlock: '💀',
-};
+import { PROFESSION_EMOJI } from '@/data/units';
 
 const CELL = 60;
 const COLORS = {
@@ -279,7 +270,7 @@ export default function BattleMap({ battleState, onUnitClick }: BattleMapProps) 
         ctx.font = `${Math.floor(CELL * 0.35)}px serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(CLASS_EMOJI[unit.class], cx, cy);
+        ctx.fillText(PROFESSION_EMOJI[unit.profession], cx, cy);
 
         const hpPct = unit.hp / unit.maxHp;
         const barW = CELL * 0.7;

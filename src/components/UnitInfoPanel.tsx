@@ -1,16 +1,7 @@
-import { Unit, UnitClass } from '@/types';
+import { Unit } from '@/types';
 import { getBuffModifier } from '@/engine/buff';
+import { PROFESSION_EMOJI } from '@/data/units';
 import { X } from 'lucide-react';
-
-const CLASS_EMOJI: Record<UnitClass, string> = {
-  warrior: '⚔️',
-  knight: '🛡️',
-  archer: '🏹',
-  mage: '🔮',
-  assassin: '🗡️',
-  priest: '✨',
-  warlock: '💀',
-};
 
 interface UnitInfoPanelProps {
   unit: Unit | null;
@@ -39,7 +30,7 @@ export default function UnitInfoPanel({ unit, allUnits, onClose }: UnitInfoPanel
     <div className="bg-[#1a1a2e]/95 rounded-lg border border-[#2a2a4a] overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 border-b border-[#2a2a4a]">
         <div className="flex items-center gap-2">
-          <span className="text-lg">{CLASS_EMOJI[unit.class]}</span>
+          <span className="text-lg">{PROFESSION_EMOJI[unit.profession]}</span>
           <span className="font-bold text-sm" style={{ color: teamColor }}>
             {unit.name}
           </span>

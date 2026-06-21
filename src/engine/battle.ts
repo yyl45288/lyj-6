@@ -7,10 +7,10 @@ import {
   Skill,
   Team,
   Unit,
-  UnitClass,
-  UnitTemplate,
+  CharacterId,
+  CharacterTemplate,
 } from '../types';
-import { UNIT_TEMPLATES } from '../data/units';
+import { CHARACTER_TEMPLATES } from '../data/units';
 import { findPath } from './pathfinding';
 import {
   decayAggro,
@@ -21,17 +21,19 @@ import {
 } from './aggro';
 import { applyBuff, getBuffModifier, tickBuffs } from './buff';
 import { generateMap, getSpawnPositions } from './mapGenerator';
+import { calculateSynergies, applySynergyBonuses } from './synergy';
 
 export function createUnit(
-  template: UnitTemplate,
+  template: CharacterTemplate,
   team: Team,
   pos: Position,
   id: string
 ): Unit {
   return {
     id,
+    characterId: template.characterId,
     name: template.name,
-    class: template.class,
+    profession: template.profession,
     team,
     hp: template.maxHp,
     maxHp: template.maxHp,
@@ -53,27 +55,34 @@ export function createUnit(
 }
 
 export function initBattle(
-  blueFormation: UnitClass[],
-  redFormation: UnitClass[]
+  blueFormation: CharacterId[],
+  redFormation: CharacterId[]
 ): BattleState {
   const map = generateMap(12, 8);
 
   const blueSpawns = getSpawnPositions(map, 'blue', blueFormation.length);
   const redSpawns = getSpawnPositions(map, 'red', redFormation.length);
 
+  const blueSynergies = calculateSynergies(blueFormation);
+  const redSynergies = calculateSynergies(redFormation);
+
   const units: Unit[] = [];
 
-  blueFormation.forEach((unitClass, i) => {
-    const template = UNIT_TEMPLATES[unitClass];
+  blueFormation.forEach((characterId, i) => {
+    const template = CHARACTER_TEMPLATES[characterId];
     if (template && blueSpawns[i]) {
-      units.push(createUnit(template, 'blue', blueSpawns[i], `blue_${i}`));
+      const unit = createUnit(template, 'blue', blueSpawns[i], `blue_${i}`);
+      applySynergyBonuses(unit, blueSynergies);
+      units.push(unit);
     }
   });
 
-  redFormation.forEach((unitClass, i) => {
-    const template = UNIT_TEMPLATES[unitClass];
+  redFormation.forEach((characterId, i) => {
+    const template = CHARACTER_TEMPLATES[characterId];
     if (template && redSpawns[i]) {
-      units.push(createUnit(template, 'red', redSpawns[i], `red_${i}`));
+      const unit = createUnit(template, 'red', redSpawns[i], `red_${i}`);
+      applySynergyBonuses(unit, redSynergies);
+      units.push(unit);
     }
   });
 
@@ -87,6 +96,8 @@ export function initBattle(
     winner: null,
     speed: 1,
     selectedUnitId: null,
+    blueSynergies,
+    redSynergies,
   };
 }
 
@@ -209,7 +220,7 @@ function processSkillBuffEffect(
     applyBuff(target, { ...buff, sourceUnitId: unit.id });
     addLog(state, unit, 'buff', `${target.name} 被施加了 ${buff.name}`);
 
-    if (unit.class === 'assassin' && skill.id === 'assassin_stealth') {
+    if (unit.profession === 'assassin' && skill.id === 'assassin_stealth') {
       const defUpBuff: Buff = {
         name: '防御提升',
         type: 'defUp',
@@ -222,7 +233,7 @@ function processSkillBuffEffect(
       addLog(state, unit, 'buff', `${unit.name} 获得了 防御提升`);
     }
 
-    if (unit.class === 'warlock' && skill.id === 'warlock_weakness_curse') {
+    if (unit.profession === 'warlock' && skill.id === 'warlock_weakness_curse') {
       const defDownBuff: Buff = {
         name: '防御降低',
         type: 'defDown',
@@ -266,7 +277,7 @@ function executeSkill(
       }
     }
     const actualDamage = applyDamageToUnit(target, damage);
-    updateAggroOnDamage(target, unit.id, actualDamage, unit.class);
+    updateAggroOnDamage(target, unit.id, actualDamage, unit.profession);
     addLog(state, unit, 'skill', `${unit.name} 对 ${target.name} 使用了 ${skill.name}，造成 ${actualDamage} 点伤害`);
 
     if (target.hp <= 0) {
@@ -284,7 +295,7 @@ function executeSkill(
     );
     for (const enemy of enemies) {
       const actualDamage = applyDamageToUnit(enemy, skill.value);
-      updateAggroOnDamage(enemy, unit.id, actualDamage, unit.class);
+      updateAggroOnDamage(enemy, unit.id, actualDamage, unit.profession);
       addLog(state, unit, 'skill', `${unit.name} 对 ${enemy.name} 使用了 ${skill.name}，造成 ${actualDamage} 点伤害`);
 
       if (enemy.hp <= 0) {
@@ -312,7 +323,7 @@ function executeSkill(
   } else if (skill.type === 'debuff') {
     const damage = skill.value;
     const actualDamage = applyDamageToUnit(target, damage);
-    updateAggroOnDamage(target, unit.id, actualDamage, unit.class);
+    updateAggroOnDamage(target, unit.id, actualDamage, unit.profession);
     addLog(state, unit, 'skill', `${unit.name} 对 ${target.name} 使用了 ${skill.name}，造成 ${actualDamage} 点伤害`);
 
     if (target.hp <= 0) {
@@ -429,7 +440,7 @@ export function executeUnitAction(
   if (!skillUsed && updatedDist <= unit.attackRange) {
     const damage = calculateDamage(unit, target);
     const actualDamage = applyDamageToUnit(target, damage);
-    updateAggroOnDamage(target, unit.id, actualDamage, unit.class);
+    updateAggroOnDamage(target, unit.id, actualDamage, unit.profession);
     addLog(state, unit, 'attack', `${unit.name} 攻击了 ${target.name}，造成 ${actualDamage} 点伤害`);
 
     if (target.hp <= 0) {

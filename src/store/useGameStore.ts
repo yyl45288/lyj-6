@@ -1,31 +1,34 @@
 import { create } from 'zustand';
-import { BattleState, Team, UnitClass } from '@/types';
+import { BattleState, Team, CharacterId, ActiveSynergy } from '@/types';
 import { initBattle } from '@/engine/battle';
+import { calculateSynergies } from '@/engine/synergy';
 
 interface GameStore {
-  blueFormation: UnitClass[];
-  redFormation: UnitClass[];
+  blueFormation: CharacterId[];
+  redFormation: CharacterId[];
   battleState: BattleState | null;
-  addToFormation: (team: Team, unitClass: UnitClass) => void;
+  addToFormation: (team: Team, characterId: CharacterId) => void;
   removeFromFormation: (team: Team, index: number) => void;
   startBattle: () => void;
   resetBattle: () => void;
   setSpeed: (speed: 1 | 2 | 4) => void;
   setSelectedUnit: (id: string | null) => void;
   togglePause: () => void;
+  getBlueSynergies: () => ActiveSynergy[];
+  getRedSynergies: () => ActiveSynergy[];
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
-  blueFormation: ['warrior', 'archer', 'mage', 'priest'],
-  redFormation: ['knight', 'assassin', 'warlock', 'warrior'],
+  blueFormation: ['zhaoyun', 'huangzhong', 'zhugeliang', 'huatuo'],
+  redFormation: ['caocao', 'lubu', 'zuoci', 'zhangfei'],
   battleState: null,
 
-  addToFormation: (team, unitClass) =>
+  addToFormation: (team, characterId) =>
     set((state) => {
       const key = team === 'blue' ? 'blueFormation' : 'redFormation';
       const formation = state[key];
       if (formation.length >= 8) return state;
-      return { [key]: [...formation, unitClass] };
+      return { [key]: [...formation, characterId] };
     }),
 
   removeFromFormation: (team, index) =>
@@ -61,4 +64,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const phase = state.battleState.phase === 'running' ? 'paused' : 'running';
       return { battleState: { ...state.battleState, phase } };
     }),
+
+  getBlueSynergies: () => calculateSynergies(get().blueFormation),
+  getRedSynergies: () => calculateSynergies(get().redFormation),
 }));

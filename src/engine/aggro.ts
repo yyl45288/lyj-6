@@ -1,13 +1,13 @@
-import { Unit, UnitClass } from '../types';
+import { Unit, Profession } from '../types';
 
 export function updateAggroOnDamage(
   unit: Unit,
   attackerId: string,
   damage: number,
-  attackerClass?: UnitClass
+  attackerProfession?: Profession
 ): void {
   let aggroGain = damage * 0.5;
-  if (attackerClass === 'warrior') {
+  if (attackerProfession === 'warrior') {
     aggroGain *= 1.5;
   }
   unit.aggroTable[attackerId] = (unit.aggroTable[attackerId] ?? 0) + aggroGain;

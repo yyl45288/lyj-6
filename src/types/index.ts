@@ -1,4 +1,13 @@
-export type UnitClass = 'warrior' | 'knight' | 'archer' | 'mage' | 'assassin' | 'priest' | 'warlock';
+export type Profession = 'warrior' | 'knight' | 'archer' | 'mage' | 'assassin' | 'priest' | 'warlock';
+
+export type CharacterId =
+  | 'zhaoyun' | 'zhangfei' | 'guanyu' | 'machao' | 'huangzhong'
+  | 'caocao' | 'xiahouyuan' | 'zhangliao' | 'xuchu' | 'dianwei'
+  | 'zhugeliang' | 'simayi' | 'zhouyu' | 'guojia' | 'pangtong'
+  | 'zhaozilong' | 'lubu' | 'sunshangxiang' | 'xiaoqiao' | 'daqiao'
+  | 'huatuo' | 'zuoci' | 'nanhuaman' | 'caizhiwenji' | 'diaochan'
+  | 'jiangwei' | 'weiyan' | 'xiahoudun' | 'caoren' | 'huanggai'
+  | 'ganning' | 'lingtong' | 'taishi' | 'lvmeng' | 'lusu';
 
 export type Team = 'blue' | 'red';
 
@@ -41,8 +50,9 @@ export type Buff = {
 
 export type Unit = {
   id: string;
+  characterId: CharacterId;
   name: string;
-  class: UnitClass;
+  profession: Profession;
   team: Team;
   hp: number;
   maxHp: number;
@@ -91,10 +101,12 @@ export type BattleState = {
   winner: Team | null;
   speed: 1 | 2 | 4;
   selectedUnitId: string | null;
+  blueSynergies: ActiveSynergy[];
+  redSynergies: ActiveSynergy[];
 };
 
 export type UnitTemplate = {
-  class: UnitClass;
+  profession: Profession;
   name: string;
   maxHp: number;
   maxMp: number;
@@ -108,8 +120,50 @@ export type UnitTemplate = {
   skills: Omit<Skill, 'currentCd'>[];
 };
 
+export type CharacterTemplate = {
+  characterId: CharacterId;
+  name: string;
+  profession: Profession;
+  maxHp: number;
+  maxMp: number;
+  atk: number;
+  def: number;
+  speed: number;
+  moveRange: number;
+  attackRange: number;
+  critRate: number;
+  critDmg: number;
+  skills: Omit<Skill, 'currentCd'>[];
+};
+
+export type SynergyBonus = {
+  type: 'atkUp' | 'defUp' | 'hpUp' | 'speedUp' | 'critRateUp' | 'critDmgUp';
+  value: number;
+};
+
+export type SynergyTier = {
+  threshold: number;
+  name: string;
+  bonuses: SynergyBonus[];
+};
+
+export type SynergyData = {
+  profession: Profession;
+  name: string;
+  tiers: SynergyTier[];
+};
+
+export type ActiveSynergy = {
+  profession: Profession;
+  name: string;
+  tierName: string;
+  tierIndex: number;
+  count: number;
+  bonuses: SynergyBonus[];
+};
+
 export type FormationSlot = {
   index: number;
-  unitClass: UnitClass | null;
+  characterId: CharacterId | null;
   team: Team;
 };

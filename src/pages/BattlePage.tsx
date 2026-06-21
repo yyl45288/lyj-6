@@ -7,6 +7,7 @@ import BattleMap from '@/components/BattleMap';
 import BattleLog from '@/components/BattleLog';
 import BattleControls from '@/components/BattleControls';
 import UnitInfoPanel from '@/components/UnitInfoPanel';
+import SynergyDisplay from '@/components/SynergyDisplay';
 
 function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
@@ -71,7 +72,7 @@ export default function BattlePage() {
     const state = localStateRef.current;
     if (state.phase === 'finished') return;
 
-    const newPhase = state.phase === 'running' ? 'paused' : 'running';
+    const newPhase: BattleState['phase'] = state.phase === 'running' ? 'paused' : 'running';
     const updated = { ...state, phase: newPhase };
     localStateRef.current = updated;
 
@@ -125,6 +126,9 @@ export default function BattlePage() {
         </div>
 
         <div className="w-72 lg:w-80 flex flex-col gap-2 p-2 border-l border-[#2a2a4a] min-h-0">
+          <div className="shrink-0">
+            <SynergyDisplay blueSynergies={battleState.blueSynergies} redSynergies={battleState.redSynergies} />
+          </div>
           <div className="shrink-0">
             <UnitInfoPanel unit={selectedUnit} allUnits={battleState.units} onClose={handleCloseInfo} />
           </div>

@@ -1,18 +1,8 @@
-import { UnitClass, UnitTemplate } from '@/types';
-import { UNIT_TEMPLATES } from '@/data/units';
-
-const CLASS_EMOJI: Record<UnitClass, string> = {
-  warrior: '⚔️',
-  knight: '🛡️',
-  archer: '🏹',
-  mage: '🔮',
-  assassin: '🗡️',
-  priest: '✨',
-  warlock: '💀',
-};
+import { CharacterId, CharacterTemplate, Profession } from '@/types';
+import { CHARACTER_TEMPLATES, PROFESSION_NAMES, PROFESSION_EMOJI } from '@/data/units';
 
 interface UnitCardProps {
-  unitClass: UnitClass;
+  characterId: CharacterId;
   onClick?: () => void;
   selected?: boolean;
   compact?: boolean;
@@ -31,9 +21,9 @@ function StatBar({ label, value, max, color }: { label: string; value: number; m
   );
 }
 
-export default function UnitCard({ unitClass, onClick, selected, compact }: UnitCardProps) {
-  const template: UnitTemplate = UNIT_TEMPLATES[unitClass];
-  const emoji = CLASS_EMOJI[unitClass];
+export default function UnitCard({ characterId, onClick, selected, compact }: UnitCardProps) {
+  const template: CharacterTemplate = CHARACTER_TEMPLATES[characterId];
+  const emoji = PROFESSION_EMOJI[template.profession];
 
   if (compact) {
     return (
@@ -65,7 +55,7 @@ export default function UnitCard({ unitClass, onClick, selected, compact }: Unit
         <span className="text-2xl">{emoji}</span>
         <div>
           <div className="text-sm font-bold text-gray-100">{template.name}</div>
-          <div className="text-[10px] text-gray-500 uppercase tracking-wider">{unitClass}</div>
+          <div className="text-[10px] text-gray-500 uppercase tracking-wider">{PROFESSION_NAMES[template.profession]}</div>
         </div>
       </div>
 

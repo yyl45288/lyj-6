@@ -1,18 +1,18 @@
-import { UnitClass, Team } from '@/types';
+import { CharacterId, Team } from '@/types';
 import UnitCard from './UnitCard';
 import { X } from 'lucide-react';
 
 interface FormationSlotProps {
-  unitClass: UnitClass | null;
+  characterId: CharacterId | null;
   team: Team;
   index: number;
   onRemove: () => void;
 }
 
-export default function FormationSlot({ unitClass, team, index, onRemove }: FormationSlotProps) {
+export default function FormationSlot({ characterId, team, index, onRemove }: FormationSlotProps) {
   const teamColor = team === 'blue' ? '#4ea8de' : '#e94560';
 
-  if (!unitClass) {
+  if (!characterId) {
     return (
       <div
         className="relative flex items-center justify-center h-16 rounded-lg border-2 border-dashed transition-all hover:bg-white/5"
@@ -34,7 +34,7 @@ export default function FormationSlot({ unitClass, team, index, onRemove }: Form
       >
         {index + 1}
       </span>
-      <UnitCard unitClass={unitClass} compact selected={false} />
+      <UnitCard characterId={characterId} compact selected={false} />
       <button
         onClick={(e) => {
           e.stopPropagation();
