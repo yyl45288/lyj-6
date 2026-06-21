@@ -267,10 +267,17 @@ export default function BattleMap({ battleState, onUnitClick }: BattleMapProps) 
         ctx.stroke();
         ctx.restore();
 
-        ctx.font = `${Math.floor(CELL * 0.35)}px serif`;
+        ctx.font = `${Math.floor(CELL * 0.32)}px serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(PROFESSION_EMOJI[unit.profession], cx, cy);
+        ctx.fillText(PROFESSION_EMOJI[unit.profession], cx, cy - 2);
+
+        ctx.font = `bold ${Math.floor(CELL * 0.15)}px sans-serif`;
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.strokeText(unit.name, cx, cy + radius - 2);
+        ctx.fillText(unit.name, cx, cy + radius - 2);
 
         const hpPct = unit.hp / unit.maxHp;
         const barW = CELL * 0.7;

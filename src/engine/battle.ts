@@ -5,6 +5,7 @@ import {
   Buff,
   Position,
   Skill,
+  SynergyBonus,
   Team,
   Unit,
   CharacterId,
@@ -86,13 +87,54 @@ export function initBattle(
     }
   });
 
+  const logs: BattleLog[] = [];
+
+  const formatBonusText = (bonus: SynergyBonus): string => {
+    const names: Record<string, string> = {
+      atkUp: '攻击',
+      defUp: '防御',
+      hpUp: '生命',
+      speedUp: '速度',
+      critRateUp: '暴击率',
+      critDmgUp: '暴击伤害',
+    };
+    const val = bonus.type === 'critRateUp' || bonus.type === 'critDmgUp'
+      ? `+${(bonus.value * 100).toFixed(0)}%`
+      : `+${bonus.value}`;
+    return `${names[bonus.type]}${val}`;
+  };
+
+  blueSynergies.forEach((synergy) => {
+    const bonusText = synergy.bonuses.map(formatBonusText).join(' ');
+    logs.push({
+      turn: 0,
+      unitId: 'blue_synergy',
+      unitName: '蓝方',
+      type: 'synergy',
+      message: `激活羁绊【${synergy.tierName}】(${synergy.name}×${synergy.count}) ${bonusText}`,
+      team: 'blue',
+    });
+  });
+
+  redSynergies.forEach((synergy) => {
+    const bonusText = synergy.bonuses.map(formatBonusText).join(' ');
+    logs.push({
+      turn: 0,
+      unitId: 'red_synergy',
+      unitName: '红方',
+      type: 'synergy',
+      message: `激活羁绊【${synergy.tierName}】(${synergy.name}×${synergy.count}) ${bonusText}`,
+      team: 'red',
+    });
+  });
+
   return {
     phase: 'running',
     turn: 0,
     currentUnitIndex: 0,
     units,
     map,
-    logs: [],
+    logs,
     winner: null,
     speed: 1,
     selectedUnitId: null,

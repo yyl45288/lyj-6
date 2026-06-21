@@ -9,6 +9,7 @@ const LOG_COLORS: Record<LogType, string> = {
   death: '#8b0000',
   heal: '#90ee90',
   move: '#888888',
+  synergy: '#a855f7',
 };
 
 interface BattleLogProps {

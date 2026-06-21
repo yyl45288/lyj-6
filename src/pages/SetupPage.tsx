@@ -125,6 +125,7 @@ export default function SetupPage() {
               characterId={characterId}
               team={team}
               index={i}
+              synergies={synergies}
               onRemove={() => removeFromFormation(team, i)}
             />
           ))}
@@ -136,6 +137,7 @@ export default function SetupPage() {
             <UnitCard
               key={cid}
               characterId={cid}
+              synergies={synergies}
               onClick={() => addToFormation(team, cid)}
             />
           ))}

@@ -80,7 +80,7 @@ export type GameMap = {
 
 export type BattlePhase = 'idle' | 'running' | 'paused' | 'finished';
 
-export type BattleLogType = 'attack' | 'skill' | 'move' | 'buff' | 'aggro' | 'death' | 'heal';
+export type BattleLogType = 'attack' | 'skill' | 'move' | 'buff' | 'aggro' | 'death' | 'heal' | 'synergy';
 
 export type BattleLog = {
   turn: number;
