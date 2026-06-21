@@ -18,6 +18,7 @@ import { createBattleReplay, BattleReplay, getAllRecordings } from '@/engine/bat
 import { loadAllRecordings, deleteRecording, clearAllRecordings } from '@/engine/battleStorage';
 import { createEmptyUnitEquipment, canEquip } from '@/engine/equipment';
 import { CHARACTER_TEMPLATES } from '@/data/units';
+import { ALL_EQUIPMENTS } from '@/data/equipment';
 
 interface GameStore {
   blueFormation: CharacterId[];
@@ -63,7 +64,23 @@ interface GameStore {
 export const useGameStore = create<GameStore>((set, get) => ({
   blueFormation: ['zhaoyun', 'huangzhong', 'zhugeliang', 'huatuo'],
   redFormation: ['caocao', 'lubu', 'zuoci', 'zhangfei'],
-  blueEquipment: {},
+  blueEquipment: {
+    0: {
+      weapon: ALL_EQUIPMENTS.find((e) => e.id === 'berserker_axe') || null,
+      armor: null,
+      accessory: null,
+    },
+    1: {
+      weapon: null,
+      armor: null,
+      accessory: ALL_EQUIPMENTS.find((e) => e.id === 'greedy_ring') || null,
+    },
+    2: {
+      weapon: null,
+      armor: ALL_EQUIPMENTS.find((e) => e.id === 'fragile_robe') || null,
+      accessory: null,
+    },
+  },
   redEquipment: {},
   battleState: null,
   battleRecorder: null,

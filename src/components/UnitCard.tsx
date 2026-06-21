@@ -99,24 +99,79 @@ export default function UnitCard({ characterId, onClick, selected, compact, syne
   };
 
   if (compact) {
-    const hpBonus = combined.maxHp;
-    const hpBonusStr = formatBonus(hpBonus);
-    const hpBonusColor = getBonusColor(hpBonus);
+    const renderStatLine = (
+      label: string,
+      base: number,
+      bonus: number,
+      baseColor: string,
+      showIfNoBonus = false
+    ) => {
+      const bonusStr = formatBonus(bonus);
+      if (!showIfNoBonus && !bonusStr) return null;
+      const bonusColor = getBonusColor(bonus);
+      return (
+        <span className="inline-flex items-center text-[10px] text-gray-400">
+          <span style={{ color: baseColor }}>{label}</span>
+          <span>{base}</span>
+          {bonusStr && <span className="ml-0.5 font-bold" style={{ color: bonusColor }}>{bonusStr}</span>}
+        </span>
+      );
+    };
+
+    const hasAnyBonus = combined.maxHp !== 0 || combined.atk !== 0 || combined.def !== 0 || combined.speed !== 0 || combined.maxMp !== 0 || combined.critRate !== 0 || combined.critDmg !== 0;
+    const hasEquipMark = combined.hasEquip || combined.hasSynergy;
+
     return (
       <div
-        className={`flex items-center gap-2 px-2 py-1.5 rounded bg-[#1a1a2e]/80 border transition-all ${
+        className={`flex flex-col gap-0.5 px-2 py-1.5 rounded bg-[#1a1a2e]/80 border transition-all ${
           selected
             ? 'border-[#f0c040] shadow-[0_0_8px_rgba(240,192,64,0.5)]'
             : 'border-[#2a2a4a] hover:border-[#4ea8de]/50'
         }`}
         onClick={onClick}
       >
-        <span className="text-lg">{emoji}</span>
-        <span className="text-xs text-gray-200 font-medium">{template.name}</span>
-        <span className="text-[10px] text-gray-400 ml-auto">
-          HP{template.maxHp}
-          {hpBonusStr && <span className="ml-0.5 font-bold" style={{ color: hpBonusColor }}>{hpBonusStr}</span>}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-base">{emoji}</span>
+          <span className="text-xs text-gray-200 font-medium flex-1 min-w-0 truncate">{template.name}</span>
+          {hasEquipMark && (
+            <div className="flex gap-0.5">
+              {combined.hasSynergy && (
+                <span className="text-[8px] px-1 rounded bg-[#f0c040]/20 text-[#f0c040] font-bold leading-none py-0.5">羁</span>
+              )}
+              {combined.hasEquip && (
+                <span className="text-[8px] px-1 rounded bg-[#22c55e]/20 text-[#22c55e] font-bold leading-none py-0.5">装</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {renderStatLine('H', template.maxHp, combined.maxHp, '#22c55e', true)}
+          {renderStatLine('A', template.atk, combined.atk, '#e94560', true)}
+          {renderStatLine('D', template.def, combined.def, '#4ea8de', true)}
+          {renderStatLine('S', template.speed, combined.speed, '#a855f7')}
+          {renderStatLine('M', template.maxMp, combined.maxMp, '#3b82f6')}
+          {combined.critRate !== 0 && (
+            <span className="text-[10px] font-bold" style={{ color: getBonusColor(combined.critRate) }}>
+              暴{formatBonus(combined.critRate, true)}
+            </span>
+          )}
+          {combined.critDmg !== 0 && (
+            <span className="text-[10px] font-bold" style={{ color: getBonusColor(combined.critDmg) }}>
+              伤{formatBonus(combined.critDmg, true)}
+            </span>
+          )}
+          {combined.moveRange !== 0 && (
+            <span className="text-[10px] font-bold" style={{ color: getBonusColor(combined.moveRange) }}>
+              移{formatBonus(combined.moveRange)}
+            </span>
+          )}
+          {combined.attackRange !== 0 && (
+            <span className="text-[10px] font-bold" style={{ color: getBonusColor(combined.attackRange) }}>
+              射{formatBonus(combined.attackRange)}
+            </span>
+          )}
+        </div>
       </div>
     );
   }
