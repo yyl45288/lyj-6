@@ -228,6 +228,7 @@ export default function BattlePage() {
         onTogglePause={handleTogglePause}
         onSetSpeed={handleSetSpeed}
         onReset={handleReset}
+        isReplayMode={replayState.isReplayMode}
       />
 
       {isFinished && battleState.winner && !replayState.isReplayMode && (

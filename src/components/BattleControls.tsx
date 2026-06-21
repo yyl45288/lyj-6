@@ -1,4 +1,4 @@
-import { Play, Pause, RotateCcw } from 'lucide-react';
+import { Play, Pause, RotateCcw, Home } from 'lucide-react';
 import { BattleState } from '@/types';
 
 interface BattleControlsProps {
@@ -6,6 +6,7 @@ interface BattleControlsProps {
   onTogglePause: () => void;
   onSetSpeed: (speed: 1 | 2 | 4) => void;
   onReset: () => void;
+  isReplayMode?: boolean;
 }
 
 export default function BattleControls({
@@ -13,6 +14,7 @@ export default function BattleControls({
   onTogglePause,
   onSetSpeed,
   onReset,
+  isReplayMode = false,
 }: BattleControlsProps) {
   const isRunning = battleState.phase === 'running';
   const isFinished = battleState.phase === 'finished';
@@ -22,7 +24,7 @@ export default function BattleControls({
       <div className="flex items-center gap-3">
         <button
           onClick={onTogglePause}
-          disabled={isFinished}
+          disabled={isFinished && !isReplayMode}
           className="w-10 h-10 rounded-lg bg-[#2a2a4a] hover:bg-[#3a3a5a] flex items-center justify-center transition-colors disabled:opacity-40"
         >
           {isRunning ? <Pause size={18} className="text-[#4ea8de]" /> : <Play size={18} className="text-[#22c55e]" />}
@@ -46,9 +48,18 @@ export default function BattleControls({
 
         <button
           onClick={onReset}
-          className="w-10 h-10 rounded-lg bg-[#2a2a4a] hover:bg-[#3a3a5a] flex items-center justify-center transition-colors"
+          title={isReplayMode ? '返回布阵' : '重置战斗'}
+          className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
+            isReplayMode
+              ? 'bg-[#f0c040]/20 hover:bg-[#f0c040]/30'
+              : 'bg-[#2a2a4a] hover:bg-[#3a3a5a]'
+          }`}
         >
-          <RotateCcw size={16} className="text-gray-400" />
+          {isReplayMode ? (
+            <Home size={16} className="text-[#f0c040]" />
+          ) : (
+            <RotateCcw size={16} className="text-gray-400" />
+          )}
         </button>
       </div>
 

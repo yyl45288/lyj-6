@@ -57,6 +57,12 @@ export default function BattleLog({ logs }: BattleLogProps) {
   }, [loadRecordings]);
 
   useEffect(() => {
+    if (replayState.isReplayMode) {
+      setActiveTab('replay');
+    }
+  }, [replayState.isReplayMode]);
+
+  useEffect(() => {
     if (activeTab === 'replay') {
       loadRecordings();
     }
