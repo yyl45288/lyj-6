@@ -1,4 +1,4 @@
-import { CharacterId, Team, ActiveSynergy } from '@/types';
+import { CharacterId, Team, ActiveSynergy, UnitEquipment } from '@/types';
 import UnitCard from './UnitCard';
 import { X } from 'lucide-react';
 
@@ -8,9 +8,10 @@ interface FormationSlotProps {
   index: number;
   onRemove: () => void;
   synergies?: ActiveSynergy[];
+  equipment?: UnitEquipment;
 }
 
-export default function FormationSlot({ characterId, team, index, onRemove, synergies }: FormationSlotProps) {
+export default function FormationSlot({ characterId, team, index, onRemove, synergies, equipment }: FormationSlotProps) {
   const teamColor = team === 'blue' ? '#4ea8de' : '#e94560';
 
   if (!characterId) {
@@ -35,7 +36,7 @@ export default function FormationSlot({ characterId, team, index, onRemove, syne
       >
         {index + 1}
       </span>
-      <UnitCard characterId={characterId} compact selected={false} synergies={synergies} />
+      <UnitCard characterId={characterId} compact selected={false} synergies={synergies} equipment={equipment} />
       <button
         onClick={(e) => {
           e.stopPropagation();

@@ -263,6 +263,7 @@ export default function SetupPage() {
                 team={team}
                 index={i}
                 synergies={synergies}
+                equipment={equipment[i]}
                 onRemove={() => removeFromFormation(team, i)}
               />
               {characterId && (

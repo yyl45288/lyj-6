@@ -51,19 +51,17 @@ export function getTotalStatBonus(unitEquipment: UnitEquipment): {
 export function applyEquipmentStats(unit: Unit, unitEquipment: UnitEquipment): void {
   const bonuses = getTotalStatBonus(unitEquipment);
 
-  unit.maxHp += bonuses.maxHp;
-  unit.hp += bonuses.maxHp;
-  unit.maxMp += bonuses.maxMp;
-  unit.mp += bonuses.maxMp;
-  unit.atk += bonuses.atk;
-  unit.def += bonuses.def;
-  unit.speed += bonuses.speed;
-  unit.critRate += bonuses.critRate;
-  unit.critDmg += bonuses.critDmg;
-  unit.moveRange += bonuses.moveRange;
-  unit.attackRange += bonuses.attackRange;
-
-  unit.critRate = Math.min(unit.critRate, 1);
+  unit.maxHp = Math.max(1, unit.maxHp + bonuses.maxHp);
+  unit.hp = Math.max(1, unit.hp + bonuses.maxHp);
+  unit.maxMp = Math.max(0, unit.maxMp + bonuses.maxMp);
+  unit.mp = Math.max(0, unit.mp + bonuses.maxMp);
+  unit.atk = Math.max(1, unit.atk + bonuses.atk);
+  unit.def = Math.max(0, unit.def + bonuses.def);
+  unit.speed = Math.max(1, unit.speed + bonuses.speed);
+  unit.critRate = Math.max(0, Math.min(1, unit.critRate + bonuses.critRate));
+  unit.critDmg = Math.max(0, unit.critDmg + bonuses.critDmg);
+  unit.moveRange = Math.max(1, unit.moveRange + bonuses.moveRange);
+  unit.attackRange = Math.max(1, unit.attackRange + bonuses.attackRange);
 }
 
 export function applyEquipmentBuffs(unit: Unit, unitEquipment: UnitEquipment): void {
