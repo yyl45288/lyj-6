@@ -16,10 +16,18 @@ function deepClone<T>(obj: T): T {
 export default function BattlePage() {
   const navigate = useNavigate();
   const battleState = useGameStore((s) => s.battleState);
+  const replayState = useGameStore((s) => s.replayState);
   const setSpeed = useGameStore((s) => s.setSpeed);
   const setSelectedUnit = useGameStore((s) => s.setSelectedUnit);
   const togglePause = useGameStore((s) => s.togglePause);
   const resetBattle = useGameStore((s) => s.resetBattle);
+  const recordBattleSnapshot = useGameStore((s) => s.recordBattleSnapshot);
+  const finishBattleRecording = useGameStore((s) => s.finishBattleRecording);
+  const stopReplay = useGameStore((s) => s.stopReplay);
+  const replayNext = useGameStore((s) => s.replayNext);
+  const setReplayPlaying = useGameStore((s) => s.setReplayPlaying);
+  const setReplaySpeed = useGameStore((s) => s.setReplaySpeed);
+  const battleReplay = useGameStore((s) => s.battleReplay);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const localStateRef = useRef<BattleState | null>(null);
@@ -34,8 +42,23 @@ export default function BattlePage() {
 
     localStateRef.current = cloned;
 
+    recordBattleSnapshot(cloned);
+
     useGameStore.setState({ battleState: cloned });
-  }, []);
+
+    if (cloned.phase === 'finished') {
+      finishBattleRecording(cloned);
+    }
+  }, [recordBattleSnapshot, finishBattleRecording]);
+
+  const advanceReplay = useCallback(() => {
+    if (!battleReplay) return;
+    if (battleReplay.isAtEnd()) {
+      setReplayPlaying(false);
+      return;
+    }
+    replayNext();
+  }, [battleReplay, replayNext, setReplayPlaying]);
 
   useEffect(() => {
     if (!battleState) {
@@ -53,10 +76,17 @@ export default function BattlePage() {
       intervalRef.current = null;
     }
 
-    const state = localStateRef.current;
-    if (state.phase === 'running') {
-      const ms = Math.max(100, 1000 / state.speed);
-      intervalRef.current = setInterval(advanceTurn, ms);
+    if (replayState.isReplayMode) {
+      if (replayState.isPlaying) {
+        const ms = Math.max(100, 1000 / replayState.playSpeed);
+        intervalRef.current = setInterval(advanceReplay, ms);
+      }
+    } else {
+      const state = localStateRef.current;
+      if (state.phase === 'running') {
+        const ms = Math.max(100, 1000 / state.speed);
+        intervalRef.current = setInterval(advanceTurn, ms);
+      }
     }
 
     return () => {
@@ -65,9 +95,22 @@ export default function BattlePage() {
         intervalRef.current = null;
       }
     };
-  }, [battleState?.phase, battleState?.speed, advanceTurn]);
+  }, [
+    battleState?.phase,
+    battleState?.speed,
+    replayState.isReplayMode,
+    replayState.isPlaying,
+    replayState.playSpeed,
+    advanceTurn,
+    advanceReplay,
+  ]);
 
   const handleTogglePause = useCallback(() => {
+    if (replayState.isReplayMode) {
+      setReplayPlaying(!replayState.isPlaying);
+      return;
+    }
+
     if (!localStateRef.current) return;
     const state = localStateRef.current;
     if (state.phase === 'finished') return;
@@ -77,16 +120,21 @@ export default function BattlePage() {
     localStateRef.current = updated;
 
     togglePause();
-  }, [togglePause]);
+  }, [replayState.isReplayMode, replayState.isPlaying, setReplayPlaying, togglePause]);
 
   const handleSetSpeed = useCallback(
     (speed: 1 | 2 | 4) => {
+      if (replayState.isReplayMode) {
+        setReplaySpeed(speed);
+        return;
+      }
+
       if (!localStateRef.current) return;
       const updated = { ...localStateRef.current, speed };
       localStateRef.current = updated;
       setSpeed(speed);
     },
-    [setSpeed]
+    [replayState.isReplayMode, setReplaySpeed, setSpeed]
   );
 
   const handleReset = useCallback(() => {
@@ -95,9 +143,14 @@ export default function BattlePage() {
       intervalRef.current = null;
     }
     localStateRef.current = null;
-    resetBattle();
+
+    if (replayState.isReplayMode) {
+      stopReplay();
+    } else {
+      resetBattle();
+    }
     navigate('/');
-  }, [resetBattle, navigate]);
+  }, [replayState.isReplayMode, stopReplay, resetBattle, navigate]);
 
   const handleUnitClick = useCallback(
     (unitId: string) => {
@@ -117,9 +170,20 @@ export default function BattlePage() {
     : null;
 
   const isFinished = battleState.phase === 'finished';
+  const effectiveSpeed = replayState.isReplayMode ? replayState.playSpeed : battleState.speed;
+  const effectiveIsRunning = replayState.isReplayMode ? replayState.isPlaying : battleState.phase === 'running';
 
   return (
     <div className="h-screen flex flex-col bg-[#1a1a2e] text-white overflow-hidden">
+      {replayState.isReplayMode && (
+        <div className="bg-[#f0c040]/20 border-b border-[#f0c040]/50 px-4 py-2 text-center text-sm">
+          <span className="font-bold text-[#f0c040]">回放模式</span>
+          <span className="text-gray-400 ml-2">
+            快照 {replayState.currentSnapshotIndex + 1} / {battleReplay?.getTotalSnapshots() ?? 0}
+          </span>
+        </div>
+      )}
+
       <div className="flex-1 flex min-h-0">
         <div className="flex-1 flex items-center justify-center p-4 overflow-auto">
           <BattleMap battleState={battleState} onUnitClick={handleUnitClick} />
@@ -139,13 +203,13 @@ export default function BattlePage() {
       </div>
 
       <BattleControls
-        battleState={battleState}
+        battleState={{ ...battleState, speed: effectiveSpeed, phase: effectiveIsRunning ? 'running' : isFinished ? 'finished' : 'paused' }}
         onTogglePause={handleTogglePause}
         onSetSpeed={handleSetSpeed}
         onReset={handleReset}
       />
 
-      {isFinished && battleState.winner && (
+      {isFinished && battleState.winner && !replayState.isReplayMode && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-50">
           <div
             className="flex flex-col items-center gap-4 p-8 rounded-2xl border-2"

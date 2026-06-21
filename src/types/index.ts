@@ -167,3 +167,27 @@ export type FormationSlot = {
   characterId: CharacterId | null;
   team: Team;
 };
+
+export type BattleSnapshot = {
+  turn: number;
+  state: BattleState;
+};
+
+export type BattleRecording = {
+  id: string;
+  startTime: number;
+  endTime: number;
+  blueFormation: CharacterId[];
+  redFormation: CharacterId[];
+  winner: Team | null;
+  totalTurns: number;
+  snapshots: BattleSnapshot[];
+};
+
+export type BattleReplayState = {
+  isReplayMode: boolean;
+  currentRecordingId: string | null;
+  currentSnapshotIndex: number;
+  isPlaying: boolean;
+  playSpeed: 1 | 2 | 4;
+};
