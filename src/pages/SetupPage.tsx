@@ -1,19 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Swords, Shield, Sparkles, History, Play, Trash2 } from 'lucide-react';
+import { Swords, Shield, Sparkles, History, Play, Trash2, Trophy, LogIn, LogOut, User, Flame, TrendingUp, Star } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
 import { CharacterId, Team, ActiveSynergy, Profession, BattleRecording, EquipmentSlot, Equipment } from '@/types';
 import { CHARACTER_TEMPLATES, ALL_CHARACTERS, PROFESSION_NAMES, PROFESSION_EMOJI, SYNERGY_DATA } from '@/data/units';
 import { calculateSynergies, getSynergyEmoji } from '@/engine/synergy';
 import { MAX_BATTLE_RECORDINGS } from '@/engine/battleStorage';
+import { formatWinRate, MIN_MATCHES_REQUIRED } from '@/engine/leaderboard';
 import UnitCard from '@/components/UnitCard';
 import FormationSlot from '@/components/FormationSlot';
-import EquipmentSlots from '@/components/EquipmentSlots';
 import EquipmentSelector from '@/components/EquipmentSelector';
+import AuthModal from '@/components/AuthModal';
 
-function SynergyPanel({ synergies, team }: { synergies: ActiveSynergy[]; team: Team }) {
-  const teamColor = team === 'blue' ? '#4ea8de' : '#e94560';
-
+function SynergyPanel({ synergies }: { synergies: ActiveSynergy[]; team?: Team }) {
   if (synergies.length === 0) {
     return (
       <div className="text-[10px] text-gray-600 italic">
@@ -69,38 +68,38 @@ export default function SetupPage() {
   const removeFromFormation = useGameStore((s) => s.removeFromFormation);
   const equipItem = useGameStore((s) => s.equipItem);
   const unequipItem = useGameStore((s) => s.unequipItem);
-  const getUnitEquipment = useGameStore((s) => s.getUnitEquipment);
   const startBattle = useGameStore((s) => s.startBattle);
   const savedRecordings = useGameStore((s) => s.savedRecordings);
   const loadRecordings = useGameStore((s) => s.loadRecordings);
   const startReplay = useGameStore((s) => s.startReplay);
   const deleteRecordingAction = useGameStore((s) => s.deleteRecording);
   const clearAllRecordingsAction = useGameStore((s) => s.clearAllRecordings);
+  const auth = useGameStore((s) => s.auth);
+  const playerSeasonStats = useGameStore((s) => s.playerSeasonStats);
+  const playerTeam = useGameStore((s) => s.playerTeam);
+  const setPlayerTeam = useGameStore((s) => s.setPlayerTeam);
+  const checkAuth = useGameStore((s) => s.checkAuth);
+  const logout = useGameStore((s) => s.logout);
+  const loadPlayerSeasonStats = useGameStore((s) => s.loadPlayerSeasonStats);
 
   const [selectedUnitForEquipment, setSelectedUnitForEquipment] = useState<{ team: Team; index: number } | null>(null);
   const [equipmentSelectorOpen, setEquipmentSelectorOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot | null>(null);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   const blueSynergies = calculateSynergies(blueFormation);
   const redSynergies = calculateSynergies(redFormation);
 
   useEffect(() => {
     loadRecordings();
-  }, [loadRecordings]);
+    checkAuth();
+  }, [loadRecordings, checkAuth]);
 
-  const handleSlotClick = (team: Team, index: number) => {
-    const formation = team === 'blue' ? blueFormation : redFormation;
-    if (formation[index]) {
-      setSelectedUnitForEquipment({ team, index });
+  useEffect(() => {
+    if (auth.isLoggedIn) {
+      loadPlayerSeasonStats();
     }
-  };
-
-  const handleEquipmentSlotClick = (slot: EquipmentSlot) => {
-    if (selectedUnitForEquipment) {
-      setSelectedSlot(slot);
-      setEquipmentSelectorOpen(true);
-    }
-  };
+  }, [auth.isLoggedIn, loadPlayerSeasonStats]);
 
   const handleEquip = (equipment: Equipment) => {
     if (selectedUnitForEquipment && selectedSlot) {
@@ -116,8 +115,18 @@ export default function SetupPage() {
 
   const handleStart = () => {
     if (blueFormation.length === 0 || redFormation.length === 0) return;
+    if (!auth.isLoggedIn) {
+      setAuthModalOpen(true);
+      return;
+    }
     startBattle();
     navigate('/battle');
+  };
+
+  const handleLogout = () => {
+    if (window.confirm('确定要退出登录吗？')) {
+      logout();
+    }
   };
 
   const handleStartReplay = (recordingId: string) => {
@@ -316,11 +325,159 @@ export default function SetupPage() {
 
   return (
     <div className="min-h-screen bg-[#1a1a2e] text-white p-4 lg:p-8">
-      <h1 className="text-center text-3xl lg:text-4xl font-black tracking-[0.3em] mb-6"
-        style={{ color: '#f0c040', textShadow: '0 0 20px rgba(240,192,64,0.3)' }}
-      >
-        战棋模拟器
-      </h1>
+      <div className="max-w-7xl mx-auto flex items-center justify-between mb-6">
+        <div />
+        <h1 className="text-2xl lg:text-3xl font-black tracking-[0.3em]"
+          style={{ color: '#f0c040', textShadow: '0 0 20px rgba(240,192,64,0.3)' }}
+        >
+          战棋模拟器
+        </h1>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/leaderboard')}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#2a2a4a] hover:bg-[#3a3a5a] text-sm font-medium transition-colors border border-[#3a3a5a]"
+          >
+            <Trophy size={16} className="text-[#f0c040]" />
+            <span className="hidden sm:inline">排行榜</span>
+          </button>
+          {auth.isLoggedIn && auth.currentPlayer ? (
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#f0c040]/10 border border-[#f0c040]/30">
+                <User size={16} className="text-[#f0c040]" />
+                <span className="text-sm font-medium text-[#f0c040]">
+                  {auth.currentPlayer.username}
+                </span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="p-2 rounded-lg hover:bg-[#2a2a4a] text-gray-400 hover:text-white transition-colors"
+                title="退出登录"
+              >
+                <LogOut size={18} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setAuthModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#f0c040] text-[#1a1a2e] text-sm font-bold hover:bg-[#d4a830] transition-colors"
+            >
+              <LogIn size={16} />
+              <span>登录</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {auth.isLoggedIn && playerSeasonStats && (
+        <div className="max-w-7xl mx-auto mb-6 p-4 rounded-xl bg-[#0a0a1a]/50 border border-[#2a2a4a]">
+          <div className="flex flex-wrap items-center gap-4 lg:gap-8">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-[#f0c040]/20 flex items-center justify-center">
+                <User size={24} className="text-[#f0c040]" />
+              </div>
+              <div>
+                <div className="font-bold text-[#f0c040]">{auth.currentPlayer?.username}</div>
+                <div className="text-xs text-gray-500">
+                  {playerSeasonStats.rank > 0
+                    ? `当前排名: #${playerSeasonStats.rank}`
+                    : playerSeasonStats.totalMatches > 0
+                    ? `还需${MIN_MATCHES_REQUIRED - playerSeasonStats.totalMatches}场上榜`
+                    : '完成3场对局进入排行榜'}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex-1 min-w-0 flex flex-wrap gap-4 lg:gap-6">
+              <div className="text-center">
+                <div className="text-2xl font-black text-[#f0c040]">
+                  {playerSeasonStats.totalMatches >= MIN_MATCHES_REQUIRED
+                    ? formatWinRate(playerSeasonStats.winRate)
+                    : '--'}
+                </div>
+                <div className="text-xs text-gray-500 flex items-center justify-center gap-1">
+                  <TrendingUp size={10} />
+                  胜率
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-black text-green-400">
+                  {playerSeasonStats.wins}
+                </div>
+                <div className="text-xs text-gray-500 flex items-center justify-center gap-1">
+                  <Star size={10} />
+                  胜场
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-black text-orange-400">
+                  {playerSeasonStats.currentWinStreak}
+                </div>
+                <div className="text-xs text-gray-500 flex items-center justify-center gap-1">
+                  <Flame size={10} />
+                  连胜
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-black text-yellow-400">
+                  {playerSeasonStats.maxWinStreak}
+                </div>
+                <div className="text-xs text-gray-500 flex items-center justify-center gap-1">
+                  <Trophy size={10} />
+                  最高连胜
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-black text-blue-400">
+                  {playerSeasonStats.averageRemainingUnits.toFixed(1)}
+                </div>
+                <div className="text-xs text-gray-500 flex items-center justify-center gap-1">
+                  <Shield size={10} />
+                  平均剩余
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-black text-purple-400">
+                  {playerSeasonStats.totalMatches}
+                </div>
+                <div className="text-xs text-gray-500">总场次</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">我方阵营:</span>
+              <button
+                onClick={() => setPlayerTeam('blue')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  playerTeam === 'blue'
+                    ? 'bg-[#4ea8de] text-white'
+                    : 'bg-[#2a2a4a] text-gray-400 hover:text-white'
+                }`}
+              >
+                蓝方
+              </button>
+              <button
+                onClick={() => setPlayerTeam('red')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  playerTeam === 'red'
+                    ? 'bg-[#e94560] text-white'
+                    : 'bg-[#2a2a4a] text-gray-400 hover:text-white'
+                }`}
+              >
+                红方
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!auth.isLoggedIn && (
+        <div className="max-w-7xl mx-auto mb-6 p-4 rounded-xl bg-[#f0c040]/10 border border-[#f0c040]/30 text-center">
+          <div className="text-sm text-[#f0c040]">
+            <Trophy size={16} className="inline mr-2" />
+            登录账号后可参与排行榜统计，记录每日战绩
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-6 mb-8">
         {renderTeamPanel('blue')}
@@ -430,6 +587,11 @@ export default function SetupPage() {
           onUnequip={handleUnequip}
         />
       )}
+
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+      />
 
       <style>{`
         @keyframes pulse {

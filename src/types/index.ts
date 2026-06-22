@@ -234,3 +234,75 @@ export type BattleReplayState = {
   isPlaying: boolean;
   playSpeed: 1 | 2 | 4;
 };
+
+export type Player = {
+  id: string;
+  username: string;
+  passwordHash: string;
+  createdAt: number;
+  lastLoginAt: number;
+};
+
+export type PlayerLoginResult = {
+  success: boolean;
+  player?: Player;
+  error?: string;
+};
+
+export type Season = {
+  id: string;
+  date: string;
+  startTime: number;
+  endTime: number;
+};
+
+export type MatchStatus = 'pending' | 'completed' | 'cancelled';
+
+export type MatchRecord = {
+  id: string;
+  seasonId: string;
+  playerId: string;
+  playerTeam: Team;
+  opponentPlayerId: string | null;
+  opponentName: string;
+  blueFormation: CharacterId[];
+  redFormation: CharacterId[];
+  winner: Team | null;
+  playerWin: boolean | null;
+  remainingPlayerUnits: number;
+  remainingOpponentUnits: number;
+  totalTurns: number;
+  startTime: number;
+  endTime: number;
+  status: MatchStatus;
+  battleRecordingId: string | null;
+};
+
+export type PlayerSeasonStats = {
+  playerId: string;
+  username: string;
+  seasonId: string;
+  wins: number;
+  losses: number;
+  totalMatches: number;
+  winRate: number;
+  currentWinStreak: number;
+  maxWinStreak: number;
+  totalRemainingUnits: number;
+  averageRemainingUnits: number;
+  rank: number;
+};
+
+export type LeaderboardSortType = 'winRate' | 'wins' | 'winStreak' | 'maxWinStreak';
+
+export type Leaderboard = {
+  seasonId: string;
+  sortType: LeaderboardSortType;
+  entries: PlayerSeasonStats[];
+  lastUpdated: number;
+};
+
+export type AuthState = {
+  currentPlayer: Player | null;
+  isLoggedIn: boolean;
+};

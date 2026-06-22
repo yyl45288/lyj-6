@@ -10,15 +10,39 @@ import {
   UnitEquipment,
   FormationEquipment,
   EquipmentSlot,
+  PlayerLoginResult,
+  MatchRecord,
+  Leaderboard,
+  LeaderboardSortType,
+  PlayerSeasonStats,
+  AuthState,
 } from '@/types';
 import { initBattle } from '@/engine/battle';
 import { calculateSynergies } from '@/engine/synergy';
 import { createBattleRecorder, BattleRecorder } from '@/engine/battleRecorder';
-import { createBattleReplay, BattleReplay, getAllRecordings } from '@/engine/battleReplay';
+import { createBattleReplay, BattleReplay } from '@/engine/battleReplay';
 import { loadAllRecordings, deleteRecording, clearAllRecordings } from '@/engine/battleStorage';
 import { createEmptyUnitEquipment, canEquip } from '@/engine/equipment';
 import { CHARACTER_TEMPLATES } from '@/data/units';
 import { ALL_EQUIPMENTS } from '@/data/equipment';
+import {
+  registerPlayer,
+  loginPlayer,
+  logoutPlayer,
+  getCurrentPlayer,
+} from '@/engine/account';
+import { getOrCreateCurrentSeason } from '@/engine/season';
+import {
+  createPendingMatch,
+  completeMatch,
+  cancelActiveMatch,
+  getCurrentSeasonPlayerMatches,
+} from '@/engine/matchRecord';
+import {
+  getCurrentSeasonLeaderboard,
+  getPlayerSeasonStatsEntry,
+} from '@/engine/leaderboard';
+import { LeaderboardSortType as LBLeaderboardSortType } from '@/types';
 
 interface GameStore {
   blueFormation: CharacterId[];
@@ -31,6 +55,14 @@ interface GameStore {
   replayState: BattleReplayState;
   savedRecordings: BattleRecording[];
   lastSavedRecordingId: string | null;
+  auth: AuthState;
+  currentMatch: MatchRecord | null;
+  playerSeasonStats: PlayerSeasonStats | null;
+  leaderboard: Leaderboard | null;
+  playerMatchHistory: MatchRecord[];
+  loginError: string | null;
+  registerError: string | null;
+  playerTeam: Team;
   addToFormation: (team: Team, characterId: CharacterId) => void;
   removeFromFormation: (team: Team, index: number) => void;
   startBattle: () => void;
@@ -59,6 +91,17 @@ interface GameStore {
   equipItem: (team: Team, formationIndex: number, equipment: Equipment) => boolean;
   unequipItem: (team: Team, formationIndex: number, slot: EquipmentSlot) => boolean;
   getUnitEquipment: (team: Team, formationIndex: number) => UnitEquipment;
+  register: (username: string, password: string) => PlayerLoginResult;
+  login: (username: string, password: string) => PlayerLoginResult;
+  logout: () => void;
+  checkAuth: () => void;
+  setPlayerTeam: (team: Team) => void;
+  completeMatchRecord: (battleState: BattleState, recordingId: string | null) => MatchRecord | null;
+  cancelMatchRecord: () => boolean;
+  loadPlayerSeasonStats: () => void;
+  loadLeaderboard: (sortType?: LeaderboardSortType) => void;
+  loadPlayerMatchHistory: () => void;
+  clearAuthErrors: () => void;
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -94,6 +137,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
   savedRecordings: [],
   lastSavedRecordingId: null,
+  auth: {
+    currentPlayer: null,
+    isLoggedIn: false,
+  },
+  currentMatch: null,
+  playerSeasonStats: null,
+  leaderboard: null,
+  playerMatchHistory: [],
+  loginError: null,
+  registerError: null,
+  playerTeam: 'blue',
 
   addToFormation: (team, characterId) =>
     set((state) => {
@@ -136,6 +190,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
       );
       const recorder = createBattleRecorder();
       recorder.start(battleState, state.blueFormation, state.redFormation);
+
+      const matchRecord = createPendingMatch(
+        state.playerTeam,
+        state.blueFormation,
+        state.redFormation,
+        'AI对手',
+        null
+      );
+
       return {
         battleState,
         battleRecorder: recorder,
@@ -147,6 +210,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           isPlaying: false,
           playSpeed: 1,
         },
+        currentMatch: matchRecord,
       };
     }),
 
@@ -441,5 +505,125 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const equipmentKey = team === 'blue' ? 'blueEquipment' : 'redEquipment';
     const equipment = state[equipmentKey];
     return equipment[formationIndex] || createEmptyUnitEquipment();
+  },
+
+  register: (username, password) => {
+    const result = registerPlayer(username, password);
+    if (result.success && result.player) {
+      set({
+        auth: {
+          currentPlayer: result.player,
+          isLoggedIn: true,
+        },
+        registerError: null,
+        loginError: null,
+      });
+      get().loadPlayerSeasonStats();
+      get().loadPlayerMatchHistory();
+    } else {
+      set({ registerError: result.error || '注册失败' });
+    }
+    return result;
+  },
+
+  login: (username, password) => {
+    const result = loginPlayer(username, password);
+    if (result.success && result.player) {
+      set({
+        auth: {
+          currentPlayer: result.player,
+          isLoggedIn: true,
+        },
+        loginError: null,
+        registerError: null,
+      });
+      get().loadPlayerSeasonStats();
+      get().loadPlayerMatchHistory();
+    } else {
+      set({ loginError: result.error || '登录失败' });
+    }
+    return result;
+  },
+
+  logout: () => {
+    logoutPlayer();
+    set({
+      auth: {
+        currentPlayer: null,
+        isLoggedIn: false,
+      },
+      playerSeasonStats: null,
+      playerMatchHistory: [],
+    });
+  },
+
+  checkAuth: () => {
+    const player = getCurrentPlayer();
+    if (player) {
+      set({
+        auth: {
+          currentPlayer: player,
+          isLoggedIn: true,
+        },
+      });
+      get().loadPlayerSeasonStats();
+      get().loadPlayerMatchHistory();
+    }
+  },
+
+  setPlayerTeam: (team) => {
+    set({ playerTeam: team });
+  },
+
+  completeMatchRecord: (battleState, recordingId) => {
+    const state = get();
+    if (!state.currentMatch) return null;
+
+    const completed = completeMatch(state.currentMatch.id, battleState, recordingId);
+    if (completed) {
+      set({ currentMatch: null });
+      get().loadPlayerSeasonStats();
+      get().loadPlayerMatchHistory();
+      get().loadLeaderboard();
+    }
+    return completed;
+  },
+
+  cancelMatchRecord: () => {
+    const cancelled = cancelActiveMatch();
+    if (cancelled) {
+      set({ currentMatch: null });
+    }
+    return cancelled;
+  },
+
+  loadPlayerSeasonStats: () => {
+    const state = get();
+    if (!state.auth.currentPlayer) {
+      set({ playerSeasonStats: null });
+      return;
+    }
+    const season = getOrCreateCurrentSeason();
+    const stats = getPlayerSeasonStatsEntry(state.auth.currentPlayer.id, season.id);
+    set({ playerSeasonStats: stats });
+  },
+
+  loadLeaderboard: (sortType = 'winRate') => {
+    const leaderboard = getCurrentSeasonLeaderboard(sortType as LBLeaderboardSortType);
+    set({ leaderboard });
+  },
+
+  loadPlayerMatchHistory: () => {
+    const state = get();
+    if (!state.auth.currentPlayer) {
+      set({ playerMatchHistory: [] });
+      return;
+    }
+    const history = getCurrentSeasonPlayerMatches(state.auth.currentPlayer.id);
+    set({ playerMatchHistory: history });
+  },
+
+  clearAuthErrors: () => {
+    set({ loginError: null, registerError: null });
   },
 }));

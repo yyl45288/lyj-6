@@ -8,6 +8,7 @@ import BattleLog from '@/components/BattleLog';
 import BattleControls from '@/components/BattleControls';
 import UnitInfoPanel from '@/components/UnitInfoPanel';
 import SynergyDisplay from '@/components/SynergyDisplay';
+import { getActiveMatch } from '@/engine/matchRecord';
 
 function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
@@ -30,6 +31,8 @@ export default function BattlePage() {
   const setReplayPlaying = useGameStore((s) => s.setReplayPlaying);
   const setReplaySpeed = useGameStore((s) => s.setReplaySpeed);
   const battleReplay = useGameStore((s) => s.battleReplay);
+  const completeMatchRecord = useGameStore((s) => s.completeMatchRecord);
+  const cancelMatchRecord = useGameStore((s) => s.cancelMatchRecord);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const localStateRef = useRef<BattleState | null>(null);
@@ -52,8 +55,11 @@ export default function BattlePage() {
     if (cloned.phase === 'finished') {
       const recordingId = finishBattleRecording(cloned);
       finishedRecordingIdRef.current = recordingId;
+      if (!replayState.isReplayMode) {
+        completeMatchRecord(cloned, recordingId);
+      }
     }
-  }, [recordBattleSnapshot, finishBattleRecording]);
+  }, [recordBattleSnapshot, finishBattleRecording, completeMatchRecord, replayState.isReplayMode]);
 
   const advanceReplay = useCallback(() => {
     if (!battleReplay) return;
@@ -152,10 +158,14 @@ export default function BattlePage() {
     if (replayState.isReplayMode) {
       stopReplay();
     } else {
+      const activeMatch = getActiveMatch();
+      if (activeMatch) {
+        cancelMatchRecord();
+      }
       resetBattle();
     }
     navigate('/');
-  }, [replayState.isReplayMode, stopReplay, resetBattle, navigate]);
+  }, [replayState.isReplayMode, stopReplay, resetBattle, navigate, cancelMatchRecord]);
 
   const handleViewReplay = useCallback(() => {
     const recordingId = finishedRecordingIdRef.current || lastSavedRecordingId;
