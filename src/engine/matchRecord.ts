@@ -193,17 +193,19 @@ export function getPlayerWinStreak(playerId: string, seasonId: string): { curren
   let currentStreak = 0;
   let maxStreak = 0;
   let tempStreak = 0;
+  let countingCurrent = true;
 
-  for (let i = matches.length - 1; i >= 0; i--) {
+  for (let i = 0; i < matches.length; i++) {
     if (matches[i].playerWin === true) {
       tempStreak++;
       maxStreak = Math.max(maxStreak, tempStreak);
-      if (i === matches.length - 1) {
+      if (countingCurrent) {
         currentStreak = tempStreak;
       }
     } else {
-      if (i === matches.length - 1) {
-        currentStreak = 0;
+      if (countingCurrent) {
+        currentStreak = tempStreak;
+        countingCurrent = false;
       }
       tempStreak = 0;
     }

@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>连胜数据注入 - 测试</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #1a1a2e; color: #fff; padding: 20px; }
+    .container { max-width: 800px; margin: 0 auto; }
+    h1 { color: #f0c040; margin-bottom: 20px; font-size: 24px; }
+    .section { background: #0a0a1a; border: 1px solid #2a2a4a; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+    .section h2 { font-size: 16px; margin-bottom: 15px; color: #f0c040; }
+    .log { background: #1a1a2e; border-radius: 8px; padding: 15px; font-family: monospace; font-size: 13px; line-height: 1.8; white-space: pre-wrap; word-break: break-all; }
+    .pass { color: #4ade80; }
+    .fail { color: #f87171; }
+    .info { color: #60a5fa; }
+    .warn { color: #fbbf24; }
+    button { background: #f0c040; color: #1a1a2e; border: none; padding: 10px 24px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; margin-right: 10px; }
+    button:hover { background: #d4a830; }
+    button.secondary { background: #2a2a4a; color: #fff; }
+    button.secondary:hover { background: #3a3a5a; }
+    .btns { margin-bottom: 20px; }
+    .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 15px; }
+    .stat { background: #2a2a4a; padding: 15px; border-radius: 10px; text-align: center; }
+    .stat-label { font-size: 12px; color: #9ca3af; margin-bottom: 5px; }
+    .stat-value { font-size: 28px; font-weight: bold; color: #f0c040; }
+    .match-item { padding: 8px 12px; background: #1a1a2e; border-radius: 6px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+    .win { color: #4ade80; }
+    .lose { color: #f87171; }
+    a { color: #f0c040; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🏆 连胜数据注入测试工具</h1>
+
+    <div class="btns">
+      <button onclick="injectData()">📥 注入测试数据</button>
+      <button class="secondary" onclick="verifyStreak()">🔍 验证连胜计算</button>
+      <button class="secondary" onclick="clearData()">🗑️ 清除测试数据</button>
+      <button class="secondary" onclick="goToApp()">🎮 返回应用</button>
+    </div>
+
+    <div class="section">
+      <h2>测试数据：对局顺序（从早到晚）：负 → 胜 → 胜</h2>
+      <p style="color:#9ca3af; font-size:13px; margin-bottom:15px;">
+        期望结果：<strong style="color:#f0c040;">当前连胜 = 2</strong>，<strong style="color:#f0c040;">最高连胜 = 2</strong>
+      </p>
+      <div id="matchList"></div>
+    </div>
+
+    <div class="section">
+      <h2>📊 统计结果</h2>
+      <div class="summary">
+        <div class="stat">
+          <div class="stat-label">当前连胜</div>
+          <div class="stat-value" id="curStreak">-</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">最高连胜</div>
+          <div class="stat-value" id="maxStreak">-</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">总场次</div>
+          <div class="stat-value" id="totalMatches">-</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">胜率</div>
+          <div class="stat-value" id="winRate">-</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>📝 执行日志</h2>
+      <div class="log" id="log">点击「注入测试数据」开始...</div>
+    </div>
+
+    <div class="section">
+      <h2>✅ 验证结果</h2>
+      <div id="verifyResult" class="log">等待验证...</div>
+    </div>
+  </div>
+
+<script>
+const TEST_PLAYER_ID = 'test_streak_player_001';
+const TEST_USERNAME = '连胜测试玩家';
+const TEST_PASSWORD_HASH = 'hash_test_1234';
+
+function log(msg, type = '') {
+  const el = document.getElementById('log');
+  const prefix = type === 'pass' ? '✅ ' : type === 'fail' ? '❌ ' : type === 'info' ? 'ℹ️ ' : type === 'warn' ? '⚠️ ' : '';
+  el.textContent += prefix + msg + '\n';
+  el.scrollTop = el.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('log').textContent = '';
+}
+
+function hashPassword(password) {
+  let hash = 0;
+  for (let i = 0; i < password.length; i++) {
+    const char = password.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return 'hash_' + Math.abs(hash).toString(16) + '_' + password.length;
+}
+
+function getDateString(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getSeasonId(date = new Date()) {
+  return `season_${getDateString(date)}`;
+}
+
+function loadJSON(key, defaultValue) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return defaultValue;
+    return JSON.parse(raw);
+  } catch {
+    return defaultValue;
+  }
+}
+
+function saveJSON(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function injectData() {
+  clearLog();
+  log('开始注入测试数据...', 'info');
+
+  const seasonId = getSeasonId();
+  const now = Date.now();
+
+  const players = loadJSON('game_players', []);
+  let player = players.find(p => p.id === TEST_PLAYER_ID);
+  if (!player) {
+    player = {
+      id: TEST_PLAYER_ID,
+      username: TEST_USERNAME,
+      passwordHash: hashPassword('test1234'),
+      createdAt: now - 86400000,
+      lastLoginAt: now,
+    };
+    players.push(player);
+    saveJSON('game_players', players);
+    log('创建测试玩家: ' + TEST_USERNAME, 'pass');
+  } else {
+    log('测试玩家已存在: ' + TEST_USERNAME, 'info');
+  }
+
+  localStorage.setItem('current_player', JSON.stringify(player));
+  log('设置当前登录玩家', 'info');
+
+  const seasonDate = getDateString();
+  const seasons = loadJSON('game_seasons', []);
+  if (!seasons.find(s => s.id === seasonId)) {
+    const d = new Date();
+    d.setHours(0,0,0,0);
+    const startTime = d.getTime();
+    d.setHours(23,59,59,999);
+    seasons.push({
+      id: seasonId,
+      date: seasonDate,
+      startTime,
+      endTime: d.getTime(),
+    });
+    saveJSON('game_seasons', seasons);
+    log('创建今日赛季: ' + seasonId, 'pass');
+  } else {
+    log('今日赛季已存在', 'info');
+  }
+
+  const matches = loadJSON('match_records', []);
+  const filtered = matches.filter(m => m.playerId !== TEST_PLAYER_ID);
+  filtered.push(
+    {
+      id: 'match_test_lose_' + now,
+      seasonId,
+      playerId: TEST_PLAYER_ID,
+      playerTeam: 'blue',
+      opponentPlayerId: null,
+      opponentName: 'AI对手',
+      blueFormation: ['zhaoyun', 'huangzhong'],
+      redFormation: ['caocao', 'lubu'],
+      winner: 'red',
+      playerWin: false,
+      remainingPlayerUnits: 0,
+      remainingOpponentUnits: 2,
+      totalTurns: 12,
+      startTime: now - 300000 - 1000,
+      endTime: now - 300000,
+      status: 'completed',
+      battleRecordingId: null,
+    },
+    {
+      id: 'match_test_win1_' + now,
+      seasonId,
+      playerId: TEST_PLAYER_ID,
+      playerTeam: 'blue',
+      opponentPlayerId: null,
+      opponentName: 'AI对手',
+      blueFormation: ['zhaoyun', 'huangzhong', 'zhugeliang'],
+      redFormation: ['caocao', 'zhangfei'],
+      winner: 'blue',
+      playerWin: true,
+      remainingPlayerUnits: 2,
+      remainingOpponentUnits: 0,
+      totalTurns: 8,
+      startTime: now - 200000 - 1000,
+      endTime: now - 200000,
+      status: 'completed',
+      battleRecordingId: null,
+    },
+    {
+      id: 'match_test_win2_' + now,
+      seasonId,
+      playerId: TEST_PLAYER_ID,
+      playerTeam: 'blue',
+      opponentPlayerId: null,
+      opponentName: 'AI对手',
+      blueFormation: ['zhaoyun', 'zhugeliang', 'huatuo'],
+      redFormation: ['lubu', 'zuoci'],
+      winner: 'blue',
+      playerWin: true,
+      remainingPlayerUnits: 3,
+      remainingOpponentUnits: 0,
+      totalTurns: 6,
+      startTime: now - 100000 - 1000,
+      endTime: now - 100000,
+      status: 'completed',
+      battleRecordingId: null,
+    }
+  );
+  saveJSON('match_records', filtered);
+  log('注入3局对局数据（负、胜、胜）', 'pass');
+
+  localStorage.removeItem('active_match_id');
+
+  verifyStreak();
+}
+
+function getMatchRecordsByPlayer(playerId, seasonId) {
+  const records = loadJSON('match_records', []);
+  return records.filter(r => {
+    if (r.playerId !== playerId) return false;
+    if (seasonId && r.seasonId !== seasonId) return false;
+    return r.status === 'completed';
+  }).sort((a, b) => b.endTime - a.endTime);
+}
+
+function getPlayerWinStreak(playerId, seasonId) {
+  const matches = getMatchRecordsByPlayer(playerId, seasonId);
+
+  let currentStreak = 0;
+  let maxStreak = 0;
+  let tempStreak = 0;
+  let countingCurrent = true;
+
+  for (let i = 0; i < matches.length; i++) {
+    if (matches[i].playerWin === true) {
+      tempStreak++;
+      maxStreak = Math.max(maxStreak, tempStreak);
+      if (countingCurrent) {
+        currentStreak = tempStreak;
+      }
+    } else {
+      if (countingCurrent) {
+        currentStreak = tempStreak;
+        countingCurrent = false;
+      }
+      tempStreak = 0;
+    }
+  }
+
+  return { current: currentStreak, max: maxStreak };
+}
+
+function verifyStreak() {
+  const seasonId = getSeasonId();
+  log('\n=== 开始验证连胜计算 ===', 'info');
+
+  const matches = getMatchRecordsByPlayer(TEST_PLAYER_ID, seasonId);
+
+  const matchListEl = document.getElementById('matchList');
+  matchListEl.innerHTML = '';
+  matches.forEach((m, i) => {
+    const date = new Date(m.endTime);
+    const timeStr = `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}:${String(date.getSeconds()).padStart(2,'0')}`;
+    const item = document.createElement('div');
+    item.className = 'match-item';
+    item.innerHTML = `
+      <span>#${i + 1} ${timeStr}</span>
+      <span class="${m.playerWin ? 'win' : 'lose'}">${m.playerWin ? '🏆 胜利' : '💔 失败'}</span>
+      <span>剩余${m.remainingPlayerUnits}单位 / ${m.totalTurns}回合</span>
+    `;
+    matchListEl.appendChild(item);
+  });
+
+  log('对局顺序（从新到旧）:', 'info');
+  matches.forEach((m, i) => {
+    log(`  ${i + 1}. ${m.playerWin ? '胜' : '负'} (endTime: ${new Date(m.endTime).toLocaleTimeString()})`);
+  });
+
+  const result = getPlayerWinStreak(TEST_PLAYER_ID, seasonId);
+  log(`\n计算结果: 当前连胜=${result.current}, 最高连胜=${result.max}`, 'info');
+
+  document.getElementById('curStreak').textContent = result.current;
+  document.getElementById('maxStreak').textContent = result.max;
+  document.getElementById('totalMatches').textContent = matches.length;
+
+  const wins = matches.filter(m => m.playerWin).length;
+  const winRate = matches.length > 0 ? ((wins / matches.length) * 100).toFixed(1) + '%' : '0%';
+  document.getElementById('winRate').textContent = winRate;
+
+  const verifyEl = document.getElementById('verifyResult');
+  const curPass = result.current === 2;
+  const maxPass = result.max === 2;
+  const allPass = curPass && maxPass;
+
+  let msg = '';
+  msg += `测试用例: 负(最早) → 胜 → 胜(最新)\n`;
+  msg += `期望: 当前连胜=2, 最高连胜=2\n\n`;
+  msg += `实际: 当前连胜=${result.current} ${curPass ? '✅' : '❌'}\n`;
+  msg += `实际: 最高连胜=${result.max} ${maxPass ? '✅' : '❌'}\n\n`;
+  msg += `结论: ${allPass ? '🎉 全部通过！两处排行榜均显示当前连胜为2' : '❌ 测试未通过，请检查代码'}\n\n`;
+  msg += `👉 现在打开应用首页 SetupPage 和排行榜页 LeaderboardPage\n`;
+  msg += `   两处的"连胜"列均应显示为 2`;
+
+  verifyEl.textContent = msg;
+  verifyEl.style.color = allPass ? '#4ade80' : '#f87171';
+
+  if (allPass) {
+    log('🎉 连胜验证全部通过！', 'pass');
+  } else {
+    log('❌ 连胜验证失败！', 'fail');
+  }
+
+  return allPass;
+}
+
+function clearData() {
+  if (!confirm('确定要清除所有测试数据吗？')) return;
+
+  const players = loadJSON('game_players', []).filter(p => p.id !== TEST_PLAYER_ID);
+  saveJSON('game_players', players);
+
+  const matches = loadJSON('match_records', []).filter(m => m.playerId !== TEST_PLAYER_ID);
+  saveJSON('match_records', matches);
+
+  const curPlayer = loadJSON('current_player', null);
+  if (curPlayer && curPlayer.id === TEST_PLAYER_ID) {
+    localStorage.removeItem('current_player');
+  }
+
+  localStorage.removeItem('active_match_id');
+
+  clearLog();
+  log('已清除测试玩家数据', 'warn');
+  document.getElementById('curStreak').textContent = '-';
+  document.getElementById('maxStreak').textContent = '-';
+  document.getElementById('totalMatches').textContent = '-';
+  document.getElementById('winRate').textContent = '-';
+  document.getElementById('matchList').innerHTML = '';
+  document.getElementById('verifyResult').textContent = '等待验证...';
+  document.getElementById('verifyResult').style.color = '';
+}
+
+function goToApp() {
+  window.location.href = '/';
+}
+
+window.addEventListener('load', () => {
+  const curPlayer = loadJSON('current_player', null);
+  if (curPlayer && curPlayer.id === TEST_PLAYER_ID) {
+    log('已检测到登录状态，点击「验证连胜计算」查看数据', 'info');
+  }
+});
+</script>
+</body>
+</html>
