@@ -3,8 +3,6 @@ import { getMatchRecordsBySeason, getPlayerWinStreak } from './matchRecord';
 import { getPlayerById, getAllPlayers } from './account';
 import { getOrCreateCurrentSeason } from './season';
 
-const MIN_MATCHES_FOR_RANKING = 3;
-
 export function calculatePlayerSeasonStats(
   playerId: string,
   seasonId: string,
@@ -90,8 +88,9 @@ function sortStats(stats: PlayerSeasonStats[], sortType: LeaderboardSortType): P
   switch (sortType) {
     case 'winRate':
       sorted.sort((a, b) => {
-        if (a.totalMatches < MIN_MATCHES_FOR_RANKING && b.totalMatches >= MIN_MATCHES_FOR_RANKING) return 1;
-        if (b.totalMatches < MIN_MATCHES_FOR_RANKING && a.totalMatches >= MIN_MATCHES_FOR_RANKING) return -1;
+        if (b.totalMatches !== a.totalMatches && (a.totalMatches === 0 || b.totalMatches === 0)) {
+          return b.totalMatches - a.totalMatches;
+        }
         if (b.winRate !== a.winRate) return b.winRate - a.winRate;
         if (b.wins !== a.wins) return b.wins - a.wins;
         return b.totalMatches - a.totalMatches;
@@ -122,7 +121,7 @@ function sortStats(stats: PlayerSeasonStats[], sortType: LeaderboardSortType): P
 
   return sorted.map((stat, index) => ({
     ...stat,
-    rank: stat.totalMatches >= MIN_MATCHES_FOR_RANKING ? index + 1 : -1,
+    rank: stat.totalMatches > 0 ? index + 1 : -1,
   }));
 }
 
@@ -171,12 +170,10 @@ export function getPlayerSeasonStatsEntry(
 
   return {
     ...entry,
-    rank: entry.totalMatches >= MIN_MATCHES_FOR_RANKING ? rankIndex + 1 : -1,
+    rank: entry.totalMatches > 0 ? rankIndex + 1 : -1,
   };
 }
 
 export function formatWinRate(winRate: number): string {
   return `${(winRate * 100).toFixed(1)}%`;
 }
-
-export const MIN_MATCHES_REQUIRED = MIN_MATCHES_FOR_RANKING;

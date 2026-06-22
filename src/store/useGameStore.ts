@@ -36,6 +36,7 @@ import {
   createPendingMatch,
   completeMatch,
   cancelActiveMatch,
+  getActiveMatch,
   getCurrentSeasonPlayerMatches,
 } from '@/engine/matchRecord';
 import {
@@ -182,6 +183,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   startBattle: () =>
     set((state) => {
+      cancelActiveMatch();
+
       const battleState = initBattle(
         state.blueFormation,
         state.redFormation,
@@ -576,10 +579,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   completeMatchRecord: (battleState, recordingId) => {
-    const state = get();
-    if (!state.currentMatch) return null;
+    const activeMatch = getActiveMatch();
+    if (!activeMatch) return null;
 
-    const completed = completeMatch(state.currentMatch.id, battleState, recordingId);
+    const completed = completeMatch(activeMatch.id, battleState, recordingId);
     if (completed) {
       set({ currentMatch: null });
       get().loadPlayerSeasonStats();

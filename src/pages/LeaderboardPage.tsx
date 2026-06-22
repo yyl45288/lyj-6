@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Trophy, TrendingUp, Flame, Star, RefreshCw, User } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
 import { LeaderboardSortType, PlayerSeasonStats } from '@/types';
-import { formatWinRate, MIN_MATCHES_REQUIRED } from '@/engine/leaderboard';
+import { formatWinRate } from '@/engine/leaderboard';
 import { getDateString } from '@/engine/season';
 
 const sortOptions: { value: LeaderboardSortType; label: string; icon: typeof Trophy }[] = [
@@ -21,8 +21,6 @@ function getRankIcon(rank: number) {
 }
 
 function PlayerCard({ stats, isCurrentPlayer }: { stats: PlayerSeasonStats; isCurrentPlayer: boolean }) {
-  const hasEnoughMatches = stats.totalMatches >= MIN_MATCHES_REQUIRED;
-
   return (
     <div
       className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${
@@ -42,7 +40,7 @@ function PlayerCard({ stats, isCurrentPlayer }: { stats: PlayerSeasonStats; isCu
             : 'bg-[#2a2a4a] text-gray-500'
         }`}
       >
-        {hasEnoughMatches ? getRankIcon(stats.rank) : '-'}
+        {stats.rank > 0 ? getRankIcon(stats.rank) : '-'}
       </div>
 
       <div className="flex-1 min-w-0">
@@ -60,17 +58,12 @@ function PlayerCard({ stats, isCurrentPlayer }: { stats: PlayerSeasonStats; isCu
           <span>{stats.wins}胜</span>
           <span>{stats.losses}负</span>
           <span>{stats.totalMatches}场</span>
-          {!hasEnoughMatches && stats.totalMatches > 0 && (
-            <span className="text-yellow-500">
-              还需{MIN_MATCHES_REQUIRED - stats.totalMatches}场上榜
-            </span>
-          )}
         </div>
       </div>
 
       <div className="text-right shrink-0">
         <div className="text-xl font-black text-[#f0c040]">
-          {hasEnoughMatches ? formatWinRate(stats.winRate) : '--'}
+          {stats.totalMatches > 0 ? formatWinRate(stats.winRate) : '--'}
         </div>
         <div className="flex items-center gap-3 text-xs text-gray-500 mt-1 justify-end">
           <span className="flex items-center gap-1">
@@ -110,7 +103,6 @@ export default function LeaderboardPage() {
   }, [loadLeaderboard, sortType]);
 
   const rankedEntries = leaderboard?.entries.filter(e => e.rank > 0) || [];
-  const unrankedEntries = leaderboard?.entries.filter(e => e.rank === -1 && e.totalMatches > 0) || [];
   const noMatchEntries = leaderboard?.entries.filter(e => e.totalMatches === 0) || [];
 
   const currentPlayerId = auth.currentPlayer?.id;
@@ -182,11 +174,11 @@ export default function LeaderboardPage() {
           </div>
 
           <div className="space-y-3">
-            {rankedEntries.length === 0 && unrankedEntries.length === 0 && noMatchEntries.length === 0 && (
+            {rankedEntries.length === 0 && noMatchEntries.length === 0 && (
               <div className="flex flex-col items-center justify-center py-16 text-gray-500">
                 <Trophy size={48} className="mb-4 opacity-30" />
                 <div className="text-lg font-medium">暂无排行数据</div>
-                <div className="text-sm mt-2">完成{MIN_MATCHES_REQUIRED}场对局后将进入排行榜</div>
+                <div className="text-sm mt-2">完成对局后将进入排行榜</div>
               </div>
             )}
 
@@ -197,21 +189,6 @@ export default function LeaderboardPage() {
                 isCurrentPlayer={entry.playerId === currentPlayerId}
               />
             ))}
-
-            {unrankedEntries.length > 0 && (
-              <>
-                <div className="text-xs text-gray-500 pt-4 pb-2 border-t border-[#2a2a4a] mt-4">
-                  未达到{MIN_MATCHES_REQUIRED}场对局
-                </div>
-                {unrankedEntries.map((entry) => (
-                  <PlayerCard
-                    key={entry.playerId}
-                    stats={entry}
-                    isCurrentPlayer={entry.playerId === currentPlayerId}
-                  />
-                ))}
-              </>
-            )}
 
             {noMatchEntries.length > 0 && (
               <>

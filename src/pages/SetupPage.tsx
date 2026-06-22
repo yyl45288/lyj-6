@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Swords, Shield, Sparkles, History, Play, Trash2, Trophy, LogIn, LogOut, User, Flame, TrendingUp, Star } from 'lucide-react';
+import { Swords, Shield, Sparkles, History, Play, Trash2, Trophy, LogIn, LogOut, User, Flame, TrendingUp, Star, List } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
 import { CharacterId, Team, ActiveSynergy, Profession, BattleRecording, EquipmentSlot, Equipment } from '@/types';
 import { CHARACTER_TEMPLATES, ALL_CHARACTERS, PROFESSION_NAMES, PROFESSION_EMOJI, SYNERGY_DATA } from '@/data/units';
 import { calculateSynergies, getSynergyEmoji } from '@/engine/synergy';
 import { MAX_BATTLE_RECORDINGS } from '@/engine/battleStorage';
-import { formatWinRate, MIN_MATCHES_REQUIRED } from '@/engine/leaderboard';
+import { formatWinRate } from '@/engine/leaderboard';
 import UnitCard from '@/components/UnitCard';
 import FormationSlot from '@/components/FormationSlot';
 import EquipmentSelector from '@/components/EquipmentSelector';
@@ -76,11 +76,13 @@ export default function SetupPage() {
   const clearAllRecordingsAction = useGameStore((s) => s.clearAllRecordings);
   const auth = useGameStore((s) => s.auth);
   const playerSeasonStats = useGameStore((s) => s.playerSeasonStats);
+  const playerMatchHistory = useGameStore((s) => s.playerMatchHistory);
   const playerTeam = useGameStore((s) => s.playerTeam);
   const setPlayerTeam = useGameStore((s) => s.setPlayerTeam);
   const checkAuth = useGameStore((s) => s.checkAuth);
   const logout = useGameStore((s) => s.logout);
   const loadPlayerSeasonStats = useGameStore((s) => s.loadPlayerSeasonStats);
+  const loadPlayerMatchHistory = useGameStore((s) => s.loadPlayerMatchHistory);
 
   const [selectedUnitForEquipment, setSelectedUnitForEquipment] = useState<{ team: Team; index: number } | null>(null);
   const [equipmentSelectorOpen, setEquipmentSelectorOpen] = useState(false);
@@ -98,8 +100,9 @@ export default function SetupPage() {
   useEffect(() => {
     if (auth.isLoggedIn) {
       loadPlayerSeasonStats();
+      loadPlayerMatchHistory();
     }
-  }, [auth.isLoggedIn, loadPlayerSeasonStats]);
+  }, [auth.isLoggedIn, loadPlayerSeasonStats, loadPlayerMatchHistory]);
 
   const handleEquip = (equipment: Equipment) => {
     if (selectedUnitForEquipment && selectedSlot) {
@@ -380,9 +383,7 @@ export default function SetupPage() {
                 <div className="text-xs text-gray-500">
                   {playerSeasonStats.rank > 0
                     ? `当前排名: #${playerSeasonStats.rank}`
-                    : playerSeasonStats.totalMatches > 0
-                    ? `还需${MIN_MATCHES_REQUIRED - playerSeasonStats.totalMatches}场上榜`
-                    : '完成3场对局进入排行榜'}
+                    : '今日暂无对局'}
                 </div>
               </div>
             </div>
@@ -390,7 +391,7 @@ export default function SetupPage() {
             <div className="flex-1 min-w-0 flex flex-wrap gap-4 lg:gap-6">
               <div className="text-center">
                 <div className="text-2xl font-black text-[#f0c040]">
-                  {playerSeasonStats.totalMatches >= MIN_MATCHES_REQUIRED
+                  {playerSeasonStats.totalMatches > 0
                     ? formatWinRate(playerSeasonStats.winRate)
                     : '--'}
                 </div>
@@ -500,6 +501,72 @@ export default function SetupPage() {
           开始战斗
         </button>
       </div>
+
+      {auth.isLoggedIn && (
+        <div className="max-w-7xl mx-auto mb-6 p-4 rounded-lg bg-[#0a0a1a]/50 border border-[#2a2a4a]">
+          <div className="flex items-center gap-2 mb-3">
+            <List size={16} className="text-[#f0c040]" />
+            <span className="text-sm font-bold text-[#f0c040]">
+              今日对局 ({playerMatchHistory.length})
+            </span>
+          </div>
+
+          {playerMatchHistory.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-gray-500 text-xs">
+              <List size={32} className="mb-2 opacity-30" />
+              <div>今日暂无对局记录</div>
+              <div className="text-[10px] mt-1">开始战斗后将自动记录</div>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+              {playerMatchHistory.map((match) => (
+                <div
+                  key={match.id}
+                  className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
+                    match.playerWin
+                      ? 'bg-green-500/5 border-green-500/20 hover:bg-green-500/10'
+                      : 'bg-red-500/5 border-red-500/20 hover:bg-red-500/10'
+                  }`}
+                >
+                  <div className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold ${
+                    match.playerWin
+                      ? 'bg-green-500/20 text-green-400'
+                      : 'bg-red-500/20 text-red-400'
+                  }`}>
+                    {match.playerWin ? '胜' : '负'}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className={match.playerWin ? 'text-green-400' : 'text-red-400'}>
+                        {match.playerWin ? '胜利' : '失败'}
+                      </span>
+                      <span className="text-gray-600">·</span>
+                      <span className="text-gray-500">{match.totalTurns}回合</span>
+                      <span className="text-gray-600">·</span>
+                      <span className="text-blue-400">剩余{match.remainingPlayerUnits}单位</span>
+                      <span className="text-gray-600">·</span>
+                      <span className="text-red-400">对手剩{match.remainingOpponentUnits}单位</span>
+                    </div>
+                    <div className="text-[10px] text-gray-600 mt-1">
+                      {new Date(match.endTime).toLocaleTimeString('zh-CN', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <span className={`text-xs font-bold ${match.playerWin ? 'text-green-400' : 'text-red-400'}`}>
+                      {match.playerWin ? '+' : '-'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto mb-6 p-4 rounded-lg bg-[#0a0a1a]/50 border border-[#2a2a4a]">
         <div className="flex items-center justify-between mb-3">
