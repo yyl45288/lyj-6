@@ -83,6 +83,36 @@ export function getRecentSeasons(limit: number = 7): Season[] {
   return seasons.slice(0, limit);
 }
 
+export function getLast7DaysSeasons(): Season[] {
+  const result: Season[] = [];
+  const today = new Date();
+  const savedSeasons = loadAllSeasons();
+
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    const dateStr = getDateString(date);
+    const seasonId = getSeasonId(date);
+
+    let season = savedSeasons.find(s => s.id === seasonId);
+    if (!season) {
+      const d = new Date(date);
+      d.setHours(0, 0, 0, 0);
+      const startTime = d.getTime();
+      d.setHours(23, 59, 59, 999);
+      season = {
+        id: seasonId,
+        date: dateStr,
+        startTime,
+        endTime: d.getTime(),
+      };
+    }
+    result.push(season);
+  }
+
+  return result;
+}
+
 export function isCurrentSeason(season: Season): boolean {
   const currentId = getSeasonId();
   return season.id === currentId;

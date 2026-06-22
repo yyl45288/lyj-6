@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Trophy, TrendingUp, Flame, Star, RefreshCw, User } from 'lucide-react';
+import { ArrowLeft, Trophy, TrendingUp, Flame, Star, RefreshCw, User, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { useGameStore } from '@/store/useGameStore';
-import { LeaderboardSortType, PlayerSeasonStats } from '@/types';
+import { LeaderboardSortType, PlayerSeasonStats, Season } from '@/types';
 import { formatWinRate } from '@/engine/leaderboard';
-import { getDateString } from '@/engine/season';
+import { getDateString, getLast7DaysSeasons, getSeasonId } from '@/engine/season';
 
 const sortOptions: { value: LeaderboardSortType; label: string; icon: typeof Trophy }[] = [
   { value: 'winRate', label: '胜率', icon: TrendingUp },
@@ -18,6 +18,16 @@ function getRankIcon(rank: number) {
   if (rank === 2) return '🥈';
   if (rank === 3) return '🥉';
   return `${rank}`;
+}
+
+function formatSeasonDate(dateStr: string): string {
+  const today = getDateString();
+  if (dateStr === today) return '今天';
+  const d = new Date(dateStr);
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (dateStr === getDateString(yesterday)) return '昨天';
+  return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
 function PlayerCard({ stats, isCurrentPlayer }: { stats: PlayerSeasonStats; isCurrentPlayer: boolean }) {
@@ -87,25 +97,35 @@ function PlayerCard({ stats, isCurrentPlayer }: { stats: PlayerSeasonStats; isCu
 export default function LeaderboardPage() {
   const navigate = useNavigate();
   const [sortType, setSortType] = useState<LeaderboardSortType>('winRate');
+  const [showSeasonPicker, setShowSeasonPicker] = useState(false);
   const leaderboard = useGameStore((s) => s.leaderboard);
   const loadLeaderboard = useGameStore((s) => s.loadLeaderboard);
   const auth = useGameStore((s) => s.auth);
   const checkAuth = useGameStore((s) => s.checkAuth);
 
-  const today = getDateString();
+  const todaySeasonId = getSeasonId();
+  const [selectedSeasonId, setSelectedSeasonId] = useState(todaySeasonId);
+
+  const seasons = useMemo(() => getLast7DaysSeasons(), []);
+
+  const selectedSeason = seasons.find(s => s.id === selectedSeasonId);
+  const isToday = selectedSeasonId === todaySeasonId;
 
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
 
   useEffect(() => {
-    loadLeaderboard(sortType);
-  }, [loadLeaderboard, sortType]);
+    loadLeaderboard(sortType, selectedSeasonId);
+  }, [loadLeaderboard, sortType, selectedSeasonId]);
 
-  const rankedEntries = leaderboard?.entries.filter(e => e.rank > 0) || [];
-  const noMatchEntries = leaderboard?.entries.filter(e => e.totalMatches === 0) || [];
-
+  const entries = leaderboard?.entries || [];
   const currentPlayerId = auth.currentPlayer?.id;
+
+  const handleSeasonSelect = (season: Season) => {
+    setSelectedSeasonId(season.id);
+    setShowSeasonPicker(false);
+  };
 
   return (
     <div className="min-h-screen bg-[#1a1a2e] text-white p-4 lg:p-8">
@@ -120,16 +140,57 @@ export default function LeaderboardPage() {
           </button>
           <h1 className="text-2xl font-black tracking-wider text-[#f0c040] flex items-center gap-2">
             <Trophy size={24} />
-            今日排行榜
+            {isToday ? '今日排行榜' : '历史排行榜'}
           </h1>
-          <div className="text-xs text-gray-500">{today}</div>
+          <div className="text-xs text-gray-500">{selectedSeason?.date}</div>
+        </div>
+
+        <div className="bg-[#0a0a1a]/50 border border-[#2a2a4a] rounded-xl p-4 mb-4">
+          <div className="flex items-center gap-2">
+            <Calendar size={14} className="text-[#f0c040]" />
+            <span className="text-sm font-medium text-gray-300">选择赛季</span>
+            <button
+              onClick={() => setShowSeasonPicker(!showSeasonPicker)}
+              className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#1a1a2e] border border-[#2a2a4a] hover:border-[#3a3a5a] transition-colors"
+            >
+              <span className="text-sm">
+                {selectedSeason ? formatSeasonDate(selectedSeason.date) : '选择日期'}
+              </span>
+              {showSeasonPicker ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+          </div>
+
+          {showSeasonPicker && (
+            <div className="mt-3 grid grid-cols-7 gap-2">
+              {seasons.map((season) => {
+                const isSelected = season.id === selectedSeasonId;
+                const isTodaySeason = season.id === todaySeasonId;
+                return (
+                  <button
+                    key={season.id}
+                    onClick={() => handleSeasonSelect(season)}
+                    className={`py-2 px-1 rounded-lg text-xs font-medium transition-all ${
+                      isSelected
+                        ? 'bg-[#f0c040] text-[#1a1a2e]'
+                        : 'bg-[#1a1a2e] text-gray-400 hover:text-white border border-[#2a2a4a] hover:border-[#3a3a5a]'
+                    }`}
+                  >
+                    <div>{formatSeasonDate(season.date)}</div>
+                    <div className={`text-[9px] mt-0.5 ${isSelected ? 'opacity-70' : 'opacity-50'}`}>
+                      {isTodaySeason ? '今日' : season.date.slice(5)}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="bg-[#0a0a1a]/50 border border-[#2a2a4a] rounded-xl p-4 mb-6">
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm font-medium text-gray-300">排序方式</span>
             <button
-              onClick={() => loadLeaderboard(sortType)}
+              onClick={() => loadLeaderboard(sortType, selectedSeasonId)}
               className="p-2 rounded-lg hover:bg-[#2a2a4a] text-gray-400 hover:text-white transition-colors"
               title="刷新"
             >
@@ -174,36 +235,25 @@ export default function LeaderboardPage() {
           </div>
 
           <div className="space-y-3">
-            {rankedEntries.length === 0 && noMatchEntries.length === 0 && (
+            {entries.length === 0 && (
               <div className="flex flex-col items-center justify-center py-16 text-gray-500">
                 <Trophy size={48} className="mb-4 opacity-30" />
-                <div className="text-lg font-medium">暂无排行数据</div>
-                <div className="text-sm mt-2">完成对局后将进入排行榜</div>
+                <div className="text-lg font-medium">
+                  {isToday ? '暂无排行数据' : '该赛季暂无数据'}
+                </div>
+                <div className="text-sm mt-2">
+                  {isToday ? '完成对局后将进入排行榜' : '当日玩家未进行对局'}
+                </div>
               </div>
             )}
 
-            {rankedEntries.map((entry) => (
+            {entries.map((entry) => (
               <PlayerCard
                 key={entry.playerId}
                 stats={entry}
                 isCurrentPlayer={entry.playerId === currentPlayerId}
               />
             ))}
-
-            {noMatchEntries.length > 0 && (
-              <>
-                <div className="text-xs text-gray-600 pt-4 pb-2 border-t border-[#2a2a4a] mt-4">
-                  暂无对局
-                </div>
-                {noMatchEntries.map((entry) => (
-                  <PlayerCard
-                    key={entry.playerId}
-                    stats={entry}
-                    isCurrentPlayer={entry.playerId === currentPlayerId}
-                  />
-                ))}
-              </>
-            )}
           </div>
         </div>
 

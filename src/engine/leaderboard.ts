@@ -1,6 +1,6 @@
 import { PlayerSeasonStats, LeaderboardSortType, Leaderboard } from '../types';
 import { getMatchRecordsBySeason, getPlayerWinStreak } from './matchRecord';
-import { getPlayerById, getAllPlayers } from './account';
+import { getPlayerById } from './account';
 import { getOrCreateCurrentSeason } from './season';
 
 export function calculatePlayerSeasonStats(
@@ -13,20 +13,7 @@ export function calculatePlayerSeasonStats(
   const matches = getMatchRecordsBySeason(seasonId).filter(m => m.playerId === playerId);
 
   if (matches.length === 0) {
-    return {
-      playerId,
-      username: player.username,
-      seasonId,
-      wins: 0,
-      losses: 0,
-      totalMatches: 0,
-      winRate: 0,
-      currentWinStreak: 0,
-      maxWinStreak: 0,
-      totalRemainingUnits: 0,
-      averageRemainingUnits: 0,
-      rank: -1,
-    };
+    return null;
   }
 
   const wins = matches.filter(m => m.playerWin === true).length;
@@ -56,9 +43,7 @@ export function calculatePlayerSeasonStats(
 }
 
 export function getSeasonPlayerStats(seasonId: string): PlayerSeasonStats[] {
-  const allPlayers = getAllPlayers();
   const allMatches = getMatchRecordsBySeason(seasonId);
-
   const playerIdsWithMatches = new Set(allMatches.map(m => m.playerId));
 
   const stats: PlayerSeasonStats[] = [];
@@ -67,15 +52,6 @@ export function getSeasonPlayerStats(seasonId: string): PlayerSeasonStats[] {
     const playerStats = calculatePlayerSeasonStats(playerId, seasonId);
     if (playerStats) {
       stats.push(playerStats);
-    }
-  });
-
-  allPlayers.forEach(player => {
-    if (!playerIdsWithMatches.has(player.id)) {
-      const playerStats = calculatePlayerSeasonStats(player.id, seasonId);
-      if (playerStats) {
-        stats.push(playerStats);
-      }
     }
   });
 
@@ -88,9 +64,6 @@ function sortStats(stats: PlayerSeasonStats[], sortType: LeaderboardSortType): P
   switch (sortType) {
     case 'winRate':
       sorted.sort((a, b) => {
-        if (b.totalMatches !== a.totalMatches && (a.totalMatches === 0 || b.totalMatches === 0)) {
-          return b.totalMatches - a.totalMatches;
-        }
         if (b.winRate !== a.winRate) return b.winRate - a.winRate;
         if (b.wins !== a.wins) return b.wins - a.wins;
         return b.totalMatches - a.totalMatches;
@@ -121,7 +94,7 @@ function sortStats(stats: PlayerSeasonStats[], sortType: LeaderboardSortType): P
 
   return sorted.map((stat, index) => ({
     ...stat,
-    rank: stat.totalMatches > 0 ? index + 1 : -1,
+    rank: index + 1,
   }));
 }
 
@@ -170,7 +143,7 @@ export function getPlayerSeasonStatsEntry(
 
   return {
     ...entry,
-    rank: entry.totalMatches > 0 ? rankIndex + 1 : -1,
+    rank: rankIndex >= 0 ? rankIndex + 1 : -1,
   };
 }
 

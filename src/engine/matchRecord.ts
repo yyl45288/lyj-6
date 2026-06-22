@@ -188,25 +188,25 @@ export function getMatchById(matchId: string): MatchRecord | null {
 }
 
 export function getPlayerWinStreak(playerId: string, seasonId: string): { current: number; max: number } {
-  const matches = getCompletedMatchesByPlayerAndSeason(playerId, seasonId);
+  const matchesDesc = getCompletedMatchesByPlayerAndSeason(playerId, seasonId);
 
   let currentStreak = 0;
+  for (let i = 0; i < matchesDesc.length; i++) {
+    if (matchesDesc[i].playerWin === true) {
+      currentStreak++;
+    } else {
+      break;
+    }
+  }
+
+  const matchesAsc = [...matchesDesc].reverse();
   let maxStreak = 0;
   let tempStreak = 0;
-  let countingCurrent = true;
-
-  for (let i = 0; i < matches.length; i++) {
-    if (matches[i].playerWin === true) {
+  for (let i = 0; i < matchesAsc.length; i++) {
+    if (matchesAsc[i].playerWin === true) {
       tempStreak++;
       maxStreak = Math.max(maxStreak, tempStreak);
-      if (countingCurrent) {
-        currentStreak = tempStreak;
-      }
     } else {
-      if (countingCurrent) {
-        currentStreak = tempStreak;
-        countingCurrent = false;
-      }
       tempStreak = 0;
     }
   }

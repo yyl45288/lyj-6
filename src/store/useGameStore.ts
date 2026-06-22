@@ -42,6 +42,7 @@ import {
 import {
   getCurrentSeasonLeaderboard,
   getPlayerSeasonStatsEntry,
+  getLeaderboard,
 } from '@/engine/leaderboard';
 import { LeaderboardSortType as LBLeaderboardSortType } from '@/types';
 
@@ -100,7 +101,7 @@ interface GameStore {
   completeMatchRecord: (battleState: BattleState, recordingId: string | null) => MatchRecord | null;
   cancelMatchRecord: () => boolean;
   loadPlayerSeasonStats: () => void;
-  loadLeaderboard: (sortType?: LeaderboardSortType) => void;
+  loadLeaderboard: (sortType?: LeaderboardSortType, seasonId?: string) => void;
   loadPlayerMatchHistory: () => void;
   clearAuthErrors: () => void;
 }
@@ -611,8 +612,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ playerSeasonStats: stats });
   },
 
-  loadLeaderboard: (sortType = 'winRate') => {
-    const leaderboard = getCurrentSeasonLeaderboard(sortType as LBLeaderboardSortType);
+  loadLeaderboard: (sortType = 'winRate', seasonId?) => {
+    let leaderboard;
+    if (seasonId) {
+      leaderboard = getLeaderboard(seasonId, sortType as LBLeaderboardSortType);
+    } else {
+      leaderboard = getCurrentSeasonLeaderboard(sortType as LBLeaderboardSortType);
+    }
     set({ leaderboard });
   },
 
